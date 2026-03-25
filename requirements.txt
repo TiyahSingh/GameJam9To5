@@ -1,6 +1,42 @@
-# 9 to 5 — Python Dependencies
-# Install with: python -m pip install -r requirements.txt
+# =============================================================================
+# 9 to 5 — Dependency Manifest
+# =============================================================================
+# Install all dependencies:  python -m pip install -r requirements.txt
+# Tested on:                 Python 3.13.12 / Windows 10
+# =============================================================================
 
-# Core game framework (windowing, 2D rendering, input handling, image/audio loading)
-# pygame-ce (community edition) is also compatible and will satisfy this requirement.
+# -----------------------------------------------------------------------------
+# THIRD-PARTY LIBRARIES
+# -----------------------------------------------------------------------------
+
+# Pygame — core game framework
+# Provides: window creation, 2D surface rendering, sprite blitting, event/input
+# handling (keyboard, mouse), image loading (PNG, JPG, GIF, WebP), font
+# rendering (SysFont), display management, clock/tick timing, and surface
+# transforms (smoothscale, rotate, flip).
+# Homepage: https://www.pygame.org
+# Licence:  LGPL v2.1
+# Note:     pygame-ce (community edition, https://pyga.me) is a drop-in
+#           replacement and also satisfies this requirement.
 pygame>=2.5.2
+
+# -----------------------------------------------------------------------------
+# PYTHON STANDARD LIBRARY MODULES USED (no install needed)
+# -----------------------------------------------------------------------------
+# These ship with Python and do NOT need to be installed. Listed here for
+# completeness so the full dependency footprint of the project is documented.
+#
+#   collections   — deque for BFS queue in the level solver
+#   dataclasses   — @dataclass for Level, Character, StepResult, Vec2, etc.
+#   enum          — Enum for Tile types, menu states, menu results
+#   os            — File-system walks for art asset loading, path joining
+#   random        — RNG for procedural level generation
+#   sys           — sys.exit for clean process termination
+#   typing        — Type hints (Iterable) for static analysis
+
+# -----------------------------------------------------------------------------
+# PLUGINS / EXTENSIONS
+# -----------------------------------------------------------------------------
+# None at this time. The game uses no Pygame plugins or external extensions.
+# All rendering, input, and audio are handled through the base Pygame API.
+# =============================================================================
