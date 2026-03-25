@@ -1,1 +1,6 @@
+# 9 to 5 — Python Dependencies
+# Install with: python -m pip install -r requirements.txt
+
+# Core game framework (windowing, 2D rendering, input handling, image/audio loading)
+# pygame-ce (community edition) is also compatible and will satisfy this requirement.
 pygame>=2.5.2
