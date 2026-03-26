@@ -802,3 +802,67 @@ a richer procedural ambient pad generator.
 | _default   | Bm (B-D-F#-A)  | 6 ¢    | 0.10   | 0.28      | Gentle neutral ambient  |
 
 **No changes** to gameplay, scoring logic, movement rules, or level design.
+
+---
+
+## Change Log — 2026-03-26: Volume Slider Restyle & Music Polish
+
+### 1. Volume Slider — Blue Cartoonish Theme
+
+The previous brown/clipboard-coloured slider has been replaced with a
+blue-themed design that matches the game's button aesthetic.
+
+**Visual changes:**
+- **Label**: Bold Consolas, blue colour `(60, 120, 200)`, reads
+  "Volume  N%".
+- **Track**: Taller pill shape (`panel_h * 0.032` height, min 14 px),
+  light blue background `(180, 205, 235)` with blue border `(90, 145, 210)`.
+- **Fill bar**: Solid blue `(80, 150, 230)` with rounded ends.
+- **Handle**: White circle `(255, 255, 255)` with blue outline
+  `(60, 130, 220)` width 3. When idle, a small highlight circle
+  `(210, 230, 255)` offset by (-2, -2) gives a glossy/cartoonish look.
+  When dragged, fills with `(100, 170, 245)` for active feedback.
+
+**Hit-area fix:**
+- `self._slider_rect` is now an expanded rect that includes the handle
+  overhang above and below the track, so clicks near the handle always
+  register. `_update_slider_from_mouse` compensates by mapping mouse X
+  back to the inner track coordinates.
+
+### 2. Background Music — Stereo Panning & Richer Harmonics
+
+**`_generate_ambient` additions:**
+- **Octave shimmer voice**: each root frequency now also spawns a detuned
+  `f * 2.0` pair at 10% gain, adding a subtle high-end sparkle.
+- **Stereo panning LFO**: a slow `pan_hz` sine wave (0.03–0.04 Hz)
+  modulates the left/right balance by `pan_amount` (18–22%), creating
+  gentle spatial movement. Samples are now written as independent L/R
+  values via `struct.pack_into("<hh", ...)`.
+- **Sub-octave warmth** reduced slightly from 0.40 to 0.35 gain to
+  balance with the new shimmer layer.
+- **Loop duration** increased to 20 seconds (from 16) for less repetition.
+
+**Updated theme parameters:**
+
+| Theme    | Dur  | Detune | LFO Hz | LFO Depth | Pan Hz | Pan Amt | Fade  |
+|----------|------|--------|--------|-----------|--------|---------|-------|
+| Office   | 20 s | 8 ¢    | 0.10   | 0.28      | 0.04   | 0.18    | 3.5 s |
+| Elevator | 20 s | 5 ¢    | 0.06   | 0.22      | 0.03   | 0.22    | 5.0 s |
+| _default | 20 s | 6 ¢    | 0.08   | 0.25      | 0.035  | 0.20    | 4.0 s |
+
+### 3. Documentation Update
+
+All project documentation files refreshed to reflect the current state:
+
+- **`plan.md`**: Added Milestones 6 (UI enhancements), 7 (Audio & volume
+  control). Updated task list with 17 completed items and 4 planned.
+  Updated architecture overview to include `audio.py` and new asset folders.
+- **`README.md`**: Added features for pause menu, clue system, sound
+  effects, background music, and volume slider. Updated controls table
+  (Esc = pause). Updated project structure with `audio.py`, `New UI/`,
+  and `Pause Menu Buttons/` folders.
+- **`requirements.txt`**: Added `pygame.draw.circle / polygon`,
+  `pygame.mixer.init / Sound / Channel` to the APIs-used section.
+- **`refinements-changes.md`**: This entry.
+
+**No changes** to gameplay, scoring logic, movement rules, or level design.

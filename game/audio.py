@@ -51,12 +51,14 @@ def _generate_ambient(
     detune_cents: float = 6.0,
     lfo_hz: float = 0.15,
     lfo_depth: float = 0.35,
+    pan_hz: float = 0.05,
+    pan_amount: float = 0.20,
     fade_ms: int = 2500,
     sample_rate: int = 44100,
 ) -> pygame.mixer.Sound:
     """
-    Richer ambient pad — each note gets a slightly detuned pair of oscillators
-    plus a slow LFO tremolo for organic movement.
+    Rich ambient pad — detuned oscillator pairs per note, sub-octave warmth,
+    slow LFO tremolo, and gentle stereo panning for spatial movement.
     """
     n = _make_samples(sample_rate, duration_ms / 1000)
     fade_n = _make_samples(sample_rate, fade_ms / 1000)
@@ -65,14 +67,18 @@ def _generate_ambient(
     voices: list[tuple[float, float, float]] = []
     for f in root_freqs:
         voices.append((f, f * detune_ratio, 1.0))
-        voices.append((f * 0.5, f * 0.5 * detune_ratio, 0.4))
+        voices.append((f * 0.5, f * 0.5 * detune_ratio, 0.35))
+        voices.append((f * 2.0, f * 2.0 * detune_ratio, 0.10))
 
     mix = 1.0 / max(1, len(voices))
     buf = bytearray(n * 4)
 
     for i in range(n):
         t = i / sample_rate
+
         lfo = 1.0 - lfo_depth * (0.5 + 0.5 * math.sin(_TWO_PI * lfo_hz * t))
+        pan_lfo = math.sin(_TWO_PI * pan_hz * t) * pan_amount
+
         val = 0.0
         for f1, f2, gain in voices:
             val += (math.sin(_TWO_PI * f1 * t) + math.sin(_TWO_PI * f2 * t)) * 0.5 * gain
@@ -84,8 +90,10 @@ def _generate_ambient(
         elif i > n - fade_n:
             env = (n - i) / max(1, fade_n)
 
-        sample = int(max(-32767, min(32767, val * volume * 32767 * env)))
-        struct.pack_into("<hh", buf, i * 4, sample, sample)
+        mono = val * volume * 32767 * env
+        left = int(max(-32767, min(32767, mono * (1.0 + pan_lfo))))
+        right = int(max(-32767, min(32767, mono * (1.0 - pan_lfo))))
+        struct.pack_into("<hh", buf, i * 4, left, right)
 
     return pygame.mixer.Sound(buffer=bytes(buf))
 
@@ -160,25 +168,25 @@ class AudioManager:
     # ── Music ─────────────────────────────────────────────────────────
     def _build_music(self) -> None:
         self._music_tracks: dict[str, pygame.mixer.Sound] = {}
-        dur = 16000
+        dur = 20000
 
-        # Office — warm C-major7 pad with slow tremolo
         self._music_tracks["Office"] = _generate_ambient(
             [261.6, 329.6, 392.0, 493.9],
-            dur, volume=0.07, detune_cents=7.0, lfo_hz=0.12, lfo_depth=0.30,
-            fade_ms=3000,
+            dur, volume=0.07, detune_cents=8.0,
+            lfo_hz=0.10, lfo_depth=0.28, pan_hz=0.04, pan_amount=0.18,
+            fade_ms=3500,
         )
-        # Elevator — dreamy A-minor9 pad, slower movement
         self._music_tracks["Elevator"] = _generate_ambient(
             [220.0, 261.6, 329.6, 493.9],
-            dur, volume=0.06, detune_cents=5.0, lfo_hz=0.08, lfo_depth=0.25,
-            fade_ms=4000,
+            dur, volume=0.06, detune_cents=5.0,
+            lfo_hz=0.06, lfo_depth=0.22, pan_hz=0.03, pan_amount=0.22,
+            fade_ms=5000,
         )
-        # Fallback — gentle B-minor pad
         self._music_tracks["_default"] = _generate_ambient(
             [246.9, 293.7, 370.0, 440.0],
-            dur, volume=0.06, detune_cents=6.0, lfo_hz=0.10, lfo_depth=0.28,
-            fade_ms=3500,
+            dur, volume=0.06, detune_cents=6.0,
+            lfo_hz=0.08, lfo_depth=0.25, pan_hz=0.035, pan_amount=0.20,
+            fade_ms=4000,
         )
 
         self._current_theme: str | None = None

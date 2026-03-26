@@ -11,8 +11,14 @@ The twist: both characters move in the same direction at the same time. Walls bl
 - **Dual-character synchronised movement** — one input controls both workers
 - **5 handcrafted puzzle levels** across themed environments (Bathroom, Office, Elevator, Break Room, Parking Lot)
 - **Procedural level generator** — press `G` for an infinite supply of new puzzles, each validated as solvable by a BFS solver
-- **Star rating system** — complete levels at or under par for 3 stars
+- **Star rating system** — procedural gold/grey stars; complete levels at or under par for 3 stars
+- **Clue system** — BFS-based optimal path arrows (3 uses; earn +1 for 3-star completions)
 - **Themed pixel art** — custom backgrounds, obstacles, goals, and character sprites per environment
+- **Custom UI buttons** — Reset, Generate, Zoom, Pause, Clue, and Exit with matching art assets
+- **Pause menu** — clipboard-themed panel with Home, Sound toggle, Back, Close, and volume slider
+- **Background music** — procedurally generated ambient pads that change per level theme
+- **Sound effects** — subtle audio cues for moves, clicks, clue activation, completion, and failures
+- **Volume control** — draggable slider in the pause menu adjusts all audio in real time
 - **Main menu** with Start Screen, Controls overlay, and Rules overlay
 - **Auto-fit display** — adapts to your screen resolution
 - **Zoom controls** — scale the grid up or down to your preference
@@ -57,7 +63,7 @@ The twist: both characters move in the same direction at the same time. Walls bl
 | `R` | Reset current level (no penalty) |
 | `G` | Generate a new procedural level |
 | `+` / `-` | Zoom in / out |
-| `Esc` | Quit game |
+| `Esc` | Pause / unpause game |
 
 ---
 
@@ -80,24 +86,27 @@ plan.md                 Development plan and milestones
 refinements-changes.md  Running changelog of design decisions
 
 game/                   Core game package
-  app.py                Game loop, rendering, HUD, input
+  app.py                Game loop, rendering, HUD, pause menu, input
+  audio.py              Procedural audio manager (SFX, music, volume)
   level.py              Level & Character data models
   levels.py             5 handcrafted static levels
   movement.py           Dual-character movement logic
-  solver.py             BFS solver for validation & par
+  solver.py             BFS solver for validation, par & clue paths
   generator.py          Procedural level generator
   assets.py             Recursive art loader
   menu.py               Main menu system
   types.py              Shared types (Vec2, Tile, directions)
 
 GameArtImages/          Art assets organised by theme
-  Backrounds & Menus/   Menu screen backgrounds
+  Backrounds & Menus/   Menu screen and pause menu backgrounds
   Bathroom Levels/      Bathroom theme tiles
   Breakroom Levels/     Break room theme tiles
   Elevator Level Characters/  Elevator theme + characters
+  New UI/               Button images (Reset, Generate, Zoom, Pause, Clue)
   Office Levels/        Office theme tiles
   Parking Lot Levels/   Parking lot theme tiles
-  UI and Buttons/       Button sprites (Play, Rules, etc.)
+  Pause Menu Buttons/   Home, Sound, Back, Replay button sprites
+  UI and Buttons/       Button sprites (Play, Rules, Close Game, etc.)
   UI Mockup Template/   UI design reference mockups
   Usual Characters/     Default character sprites
 ```

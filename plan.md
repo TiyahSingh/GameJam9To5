@@ -45,8 +45,26 @@
 - [x] Level reset with `R` (no penalty)
 - [x] On-demand procedural level generation with `G`
 
-### Milestone 6 — Future Enhancements (Planned)
-- [ ] Sound effects and background music
+### Milestone 6 — UI Enhancements & Interactivity (Completed)
+- [x] Custom UI button images replacing text labels (Reset, Generate, Zoom, Exit, Pause, Clue)
+- [x] Clipboard-themed right-side HUD panel with desk surface background
+- [x] Character sprite images for Player A and Player B (all non-Elevator levels)
+- [x] Colour-coded goal tile glow highlights and player tile identity overlays
+- [x] Pause menu system with aspect-ratio-preserving background and close button
+- [x] Pause menu buttons (Home, Sound toggle, Back) vertically laid out on clipboard paper
+- [x] Clue system: BFS-based optimal path arrows, 3 uses, +1 reward for 3-star completion
+- [x] Procedural 5-pointed star rating (gold/grey, 1–3 stars based on par moves)
+
+### Milestone 7 — Audio & Volume Control (Completed)
+- [x] Procedural audio manager (`game/audio.py`) — no external audio files required
+- [x] Theme-based background music: Office (Cmaj7), Elevator (Am9), default (Bm) ambient pads
+- [x] Detuned oscillator pairs, sub-octave warmth, octave shimmer, stereo panning LFO
+- [x] 7 sound effects: click, move, clue, complete, fail, pause open/close
+- [x] Music toggle via pause menu Sound button (visual strikethrough when off)
+- [x] Volume slider in pause menu — blue cartoonish style, real-time drag control
+- [x] Master volume system controlling all SFX + music simultaneously
+
+### Milestone 8 — Future Enhancements (Planned)
 - [ ] Level-select screen with star ratings displayed
 - [ ] Undo/redo move history
 - [ ] Animated character movement (tweened tile transitions)
@@ -81,11 +99,17 @@
 | 8 | Game loop, HUD, flash feedback, zoom | Done | `app.py` |
 | 9 | Auto-fit to screen resolution | Done | `app.py` |
 | 10 | Documentation (plan, readme, changelog) | Done | Project root |
-| 11 | Sound effects & music | Planned | — |
-| 12 | Level-select screen | Planned | — |
-| 13 | Undo/redo system | Planned | — |
-| 14 | Character movement animation | Planned | — |
-| 15 | Standalone executable packaging | Planned | — |
+| 11 | Custom UI button images (Reset, Generate, Zoom, Exit, Pause, Clue) | Done | `app.py` |
+| 12 | Pause menu with clipboard background + close button | Done | `app.py` |
+| 13 | Clue system (BFS path hints, 3 uses, 3-star reward) | Done | `app.py`, `solver.py` |
+| 14 | Procedural star rating (gold/grey, 1–3 stars) | Done | `app.py` |
+| 15 | Character sprites + player/goal tile colour highlights | Done | `app.py`, `assets.py` |
+| 16 | Procedural audio manager (SFX + music) | Done | `audio.py` |
+| 17 | Volume slider in pause menu | Done | `app.py`, `audio.py` |
+| 18 | Level-select screen | Planned | — |
+| 19 | Undo/redo system | Planned | — |
+| 20 | Character movement animation | Planned | — |
+| 21 | Standalone executable packaging | Planned | — |
 
 ---
 
@@ -94,14 +118,17 @@
 ```
 main.py              Entry point — initialises Pygame, runs GameApp
 game/
-  app.py             Main game loop, rendering, HUD, input handling
+  app.py             Main game loop, rendering, HUD, pause menu, input handling
+  audio.py           Procedural audio manager — SFX, music, volume control
   level.py           Level & Character data models, ASCII level parser
   levels.py          5 handcrafted static levels with solvability checks
   movement.py        Dual-character movement rules and step resolution
-  solver.py          BFS solver for level validation and par calculation
+  solver.py          BFS solver for level validation, par & clue path calculation
   generator.py       Procedural level generator with quality constraints
   assets.py          Recursive art loader with theme/role classification
   menu.py            Main menu system with overlays and button widgets
   types.py           Shared types: Vec2, Tile enum, direction constants
 GameArtImages/       Themed art assets (backgrounds, obstacles, goals, characters, UI)
+  New UI/            Button images (Reset, Generate, Zoom, Pause, Clue, Star)
+  Pause Menu Buttons/ Home, Sound, Back, Replay button sprites
 ```

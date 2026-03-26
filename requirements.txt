@@ -28,9 +28,11 @@
 #   pygame.image.load / convert_alpha    — art asset loading (assets.py, menu.py)
 #   pygame.transform.smoothscale         — tile & background scaling (assets.py, menu.py)
 #   pygame.Surface / SRCALPHA            — off-screen surfaces for flash overlay (app.py)
-#   pygame.draw.rect / line              — fallback tile rendering, HUD panel (app.py)
+#   pygame.draw.rect / line / circle / polygon — tile rendering, HUD, stars,
+#                                              clue arrows, slider, glow overlays (app.py)
 #   pygame.font.SysFont                  — HUD text rendering (app.py)
 #   pygame.Rect / collidepoint           — hit-testing for menu buttons (menu.py)
+#   pygame.mixer.init / Sound / Channel  — procedural audio playback (audio.py)
 #
 # Homepage: https://www.pygame.org
 # Licence:  LGPL v2.1
