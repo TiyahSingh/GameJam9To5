@@ -786,23 +786,37 @@ class GameApp:
         paper_h = int(panel_h * 0.68)
         paper_cx = paper_x + paper_w // 2
 
-        # Scale buttons proportionally to the panel so they never look tiny
-        btn_size = max(60, int(panel_h * 0.14))
+        # Scale buttons proportionally — capped to leave room for the slider
+        btn_size = max(44, int(panel_h * 0.11))
         img_home = self._crop_and_scale(self.pm_home_raw, btn_size, btn_size)
         img_sound = self._crop_and_scale(self.pm_sound_raw, btn_size, btn_size)
         img_back = self._crop_and_scale(self.pm_back_raw, btn_size, btn_size)
 
-        # Vertical layout centred inside the paper with generous spacing
-        btn_gap = max(16, int(panel_h * 0.04))
         btns: list[tuple[str, pygame.Surface]] = [
             ("home", img_home),
             ("sound", img_sound),
             ("back", img_back),
         ]
-        total_btn_h = sum(b.get_height() for _, b in btns) + btn_gap * (len(btns) - 1)
-        btn_area_top = paper_y + int(paper_h * 0.18)
-        btn_area_bottom = paper_y + paper_h - int(paper_h * 0.06)
-        by = btn_area_top + (btn_area_bottom - btn_area_top - total_btn_h) // 2
+
+        # Pre-compute slider dimensions so we can include it in total height
+        slider_font = pygame.font.SysFont("consolas", max(11, int(panel_h * 0.025)), bold=True)
+        vol_lbl_h = slider_font.size("Volume")[1]
+        track_h = max(8, int(panel_h * 0.020))
+        handle_r = max(7, int(track_h * 1.0))
+        slider_total_h = vol_lbl_h + 4 + track_h + handle_r
+
+        btn_gap = max(8, int(panel_h * 0.025))
+        slider_gap = max(6, int(panel_h * 0.018))
+        total_content_h = (
+            sum(b.get_height() for _, b in btns)
+            + btn_gap * (len(btns) - 1)
+            + slider_gap
+            + slider_total_h
+        )
+
+        content_top = paper_y + int(paper_h * 0.15)
+        content_bottom = paper_y + paper_h - int(paper_h * 0.05)
+        by = content_top + max(0, (content_bottom - content_top - total_content_h) // 2)
 
         for name, img in btns:
             r = img.get_rect(centerx=paper_cx, top=by)
@@ -816,21 +830,18 @@ class GameApp:
             self.pause_btn_rects[name] = r
             by += img.get_height() + btn_gap
 
-        # ── Volume Slider (blue / cartoonish style) ──────────────────
-        slider_font = pygame.font.SysFont("consolas", max(13, int(panel_h * 0.032)), bold=True)
+        # ── Volume Slider (compact, blue / cartoonish) ────────────────
+        by += slider_gap - btn_gap  # switch from btn_gap to slider_gap
         vol_pct = int(self.audio.volume * 100)
-        lbl_color = (60, 120, 200)
-        lbl = slider_font.render(f"Volume  {vol_pct}%", True, lbl_color)
+        lbl = slider_font.render(f"Volume  {vol_pct}%", True, (60, 120, 200))
         self.screen.blit(lbl, lbl.get_rect(centerx=paper_cx, top=by))
-        by += lbl.get_height() + max(6, int(panel_h * 0.015))
+        by += lbl.get_height() + 4
 
-        slider_margin = max(16, int(paper_w * 0.10))
-        track_h = max(14, int(panel_h * 0.032))
+        slider_margin = max(10, int(paper_w * 0.12))
         track_x = paper_x + slider_margin
         track_w = paper_w - slider_margin * 2
         track_y = by
 
-        handle_r = max(10, int(track_h * 1.1))
         hit_rect = pygame.Rect(
             track_x - handle_r, track_y - handle_r,
             track_w + handle_r * 2, track_h + handle_r * 2,
@@ -848,14 +859,12 @@ class GameApp:
 
         handle_cx = track_x + fill_w
         handle_cy = track_y + track_h // 2
-
         pygame.draw.circle(self.screen, (255, 255, 255), (handle_cx, handle_cy), handle_r)
-        pygame.draw.circle(self.screen, (60, 130, 220), (handle_cx, handle_cy), handle_r, 3)
+        pygame.draw.circle(self.screen, (60, 130, 220), (handle_cx, handle_cy), handle_r, 2)
         if self._dragging_slider:
-            pygame.draw.circle(self.screen, (100, 170, 245), (handle_cx, handle_cy), handle_r - 4)
+            pygame.draw.circle(self.screen, (100, 170, 245), (handle_cx, handle_cy), max(2, handle_r - 3))
         else:
-            inner_r = max(3, handle_r - 5)
-            pygame.draw.circle(self.screen, (210, 230, 255), (handle_cx - 2, handle_cy - 2), inner_r)
+            pygame.draw.circle(self.screen, (210, 230, 255), (handle_cx - 1, handle_cy - 1), max(2, handle_r - 4))
 
     def _draw_hud(self) -> None:
         w, h = self.screen.get_size()
