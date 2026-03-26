@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-03-26 — Office-Themed Clipboard HUD & Updated Button Art
+
+**What changed:**
+- Replaced the solid dark HUD panel background with a hand-drawn-style **office clipboard-on-desk** design:
+  - **Desk surface**: warm wood-tone base (`(162, 123, 82)`) with alternating horizontal grain stripes for texture.
+  - **Clipboard**: brown rounded-rect board (`(178, 144, 96)`) with a 3px darker border, inset from the desk edges.
+  - **Metal clip**: small grey rounded rectangle at the top centre of the clipboard with a rivet dot, matching the clip style in `Pause Menu Background.png`.
+  - **Paper sheet**: cream/off-white (`(248, 244, 235)`) inset within the clipboard, with faint ruled lines every 20px for a notebook feel.
+- All HUD text (title, level info, moves, par, stars, best scores) now renders in dark ink tones on the paper surface for high contrast and legibility.
+- Picked up the **updated button images** for Reset Level and Generate New Level (re-exported by the artist on 2026-03-26 at 11:23).
+- Exit button repositioned to sit on the clipboard board area (top-right corner of the desk).
+
+**Design decision:**
+- Programmatic clipboard rather than using `Pause Menu Background.png` directly — avoids the "Menu" title and character illustrations that would clash with HUD content, while still matching the established visual language.
+- Paper ruled lines and ink-tone text evoke the "paperwork" feel of a 9-to-5 office job, reinforcing the game's theme.
+- Desk grain stripes are subtle (9px bands, 2-tone alternation) so they don't compete with the clipboard and buttons.
+
+**Impact:**
+- Visual-only change. No gameplay, movement, or input logic was modified. All keyboard controls remain unchanged.
+
+---
+
 ## 2026-03-26 — HUD Button Images Replace Text Controls
 
 **What changed:**

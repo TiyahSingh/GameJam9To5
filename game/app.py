@@ -474,46 +474,86 @@ class GameApp:
     def _draw_hud(self) -> None:
         w, h = self.screen.get_size()
         hud_x = w - self.hud_w_px
-        panel = pygame.Rect(hud_x, 0, self.hud_w_px, h)
-        pygame.draw.rect(self.screen, (12, 12, 14), panel)
-        pygame.draw.line(self.screen, (30, 30, 36), (hud_x, 0), (hud_x, h), 2)
 
-        y = 18
-        def line(text: str, big: bool = False, color: tuple[int, int, int] = (235, 235, 240)) -> None:
+        # --- Desk surface background ---
+        desk = pygame.Rect(hud_x, 0, self.hud_w_px, h)
+        pygame.draw.rect(self.screen, (162, 123, 82), desk)
+        for stripe_y in range(0, h, 18):
+            c = (152, 115, 74) if (stripe_y // 18) % 2 == 0 else (168, 130, 88)
+            pygame.draw.rect(self.screen, c, (hud_x, stripe_y, self.hud_w_px, 9))
+
+        # --- Clipboard ---
+        clip_margin = 10
+        clip_rect = pygame.Rect(hud_x + clip_margin, 20, self.hud_w_px - clip_margin * 2, h - 30)
+        pygame.draw.rect(self.screen, (178, 144, 96), clip_rect, border_radius=10)
+        pygame.draw.rect(self.screen, (148, 118, 72), clip_rect, width=3, border_radius=10)
+
+        # Metal clip at top
+        clip_w, clip_h = 40, 18
+        clip_top = pygame.Rect(clip_rect.centerx - clip_w // 2, clip_rect.top - 6, clip_w, clip_h)
+        pygame.draw.rect(self.screen, (170, 175, 180), clip_top, border_radius=6)
+        pygame.draw.rect(self.screen, (130, 135, 140), clip_top, width=2, border_radius=6)
+        pygame.draw.circle(self.screen, (150, 155, 160), (clip_top.centerx, clip_top.top + 6), 4)
+
+        # Paper sheet on clipboard
+        paper_margin = 8
+        paper = pygame.Rect(
+            clip_rect.x + paper_margin,
+            clip_rect.y + 16,
+            clip_rect.width - paper_margin * 2,
+            clip_rect.height - 24,
+        )
+        pygame.draw.rect(self.screen, (248, 244, 235), paper, border_radius=4)
+        pygame.draw.rect(self.screen, (200, 192, 178), paper, width=1, border_radius=4)
+
+        # Faint ruled lines on the paper
+        for ly in range(paper.top + 24, paper.bottom - 4, 20):
+            pygame.draw.line(self.screen, (220, 215, 205), (paper.left + 6, ly), (paper.right - 6, ly))
+
+        # --- Text on paper ---
+        text_x = paper.x + 10
+        y = paper.y + 8
+
+        dark = (42, 36, 28)
+        accent = (90, 70, 45)
+        green = (35, 120, 60)
+
+        def line(text: str, big: bool = False, color: tuple[int, int, int] = dark) -> None:
             nonlocal y
             f = self.font_big if big else self.font
             surf = f.render(text, True, color)
-            self.screen.blit(surf, (hud_x + 16, y))
-            y += surf.get_height() + (10 if big else 6)
+            self.screen.blit(surf, (text_x, y))
+            y += surf.get_height() + (8 if big else 5)
 
-        line("9 to 5", big=True)
+        line("9 to 5", big=True, color=accent)
         line(f"Level {self.level_idx + 1}/{len(self.levels)}")
         line(f"Theme: {self.level.theme}")
-        y += 8
+        y += 6
 
-        line(f"Moves: {self.move_count}", color=(240, 240, 255))
+        line(f"Moves: {self.move_count}", color=dark)
         if self.level.par_moves is not None:
-            line(f"Par: {self.level.par_moves}", color=(210, 210, 220))
+            line(f"Par: {self.level.par_moves}", color=accent)
         if self.completed:
             stars = self._compute_stars()
-            line(f"Completed: {stars} star(s)", color=(90, 220, 140))
+            line(f"Completed: {stars} star(s)", color=green)
             if self.level_idx + 1 < len(self.levels):
-                line("Next level starting...", color=(210, 210, 220))
+                line("Next level starting...", color=accent)
             else:
-                line("All levels complete!", color=(210, 210, 220))
-        y += 14
+                line("All levels complete!", color=accent)
+        y += 10
 
         st = self.stats.get(self.level_idx)
         if st and st.completed:
-            line("Best:", color=(210, 210, 220))
+            line("Best:", color=accent)
             if st.best_moves is not None:
-                line(f"- Moves: {st.best_moves}", color=(210, 210, 220))
+                line(f"  Moves: {st.best_moves}", color=accent)
             if st.best_stars is not None:
-                line(f"- Stars: {st.best_stars}", color=(210, 210, 220))
-            y += 8
+                line(f"  Stars: {st.best_stars}", color=accent)
+            y += 6
 
+        # --- Buttons on paper ---
         hud_cx = hud_x + self.hud_w_px // 2
-        y += 6
+        y += 4
 
         def place_btn(name: str, img: pygame.Surface) -> None:
             nonlocal y
@@ -538,7 +578,8 @@ class GameApp:
         self.screen.blit(self.img_btn_zoom_out, r_out)
         self.hud_btn_rects["zoom_out"] = r_out
 
-        exit_r = self.img_btn_exit.get_rect(topright=(w - 8, 8))
+        # Exit button in top-right corner of the desk
+        exit_r = self.img_btn_exit.get_rect(topright=(w - clip_margin - 4, 24))
         self.screen.blit(self.img_btn_exit, exit_r)
         self.hud_btn_rects["exit"] = exit_r
 
