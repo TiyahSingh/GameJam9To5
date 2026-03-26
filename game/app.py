@@ -819,7 +819,9 @@ class GameApp:
             self.pause_btn_rects[name] = r
             by += img.get_height() + btn_gap
 
-        # ── Volume Slider — tiny, bottom-center of paper ─────────────
+        # ── Volume Slider — tiny, bottom-center of clipboard board ────
+        board_cx = panel_x + int(panel_w * 0.41)
+
         track_h = max(4, int(paper_h * 0.016))
         handle_r = max(4, int(track_h * 0.8))
         s_font = pygame.font.SysFont("consolas", max(8, int(paper_h * 0.028)))
@@ -827,13 +829,12 @@ class GameApp:
         vol_pct = int(self.audio.volume * 100)
         lbl = s_font.render(f"Vol {vol_pct}%", True, (80, 130, 200))
 
-        slider_inset = max(10, int(paper_w * 0.30))
-        track_w = paper_w - slider_inset * 2
-        track_x = paper_cx - track_w // 2
+        track_w = max(30, int(paper_w * 0.40))
+        track_x = board_cx - track_w // 2
         track_y = slider_zone_bot - track_h - handle_r
         lbl_y = track_y - lbl.get_height() - 2
 
-        self.screen.blit(lbl, lbl.get_rect(centerx=paper_cx, top=lbl_y))
+        self.screen.blit(lbl, lbl.get_rect(centerx=board_cx, top=lbl_y))
 
         hit_pad = max(handle_r + 2, 6)
         self._slider_rect = pygame.Rect(
