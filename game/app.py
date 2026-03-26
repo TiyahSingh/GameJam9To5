@@ -771,11 +771,12 @@ class GameApp:
         panel_y = (h - panel_h) // 2
         self.screen.blit(bg_scaled, (panel_x, panel_y))
 
-        # Close button — top-right of the visible clipboard (measured from image)
+        # Close button — top-right corner of the clipboard board (right edge 72.5%, top ~13%)
         close_sz = max(28, int(panel_h * 0.07))
         img_close = self._crop_and_scale(self.pm_close_raw, close_sz, close_sz)
-        close_right = panel_x + int(panel_w * 0.57)
-        close_r = img_close.get_rect(topright=(close_right, panel_y + int(panel_h * 0.04)))
+        board_right = panel_x + int(panel_w * 0.715)
+        board_top = panel_y + int(panel_h * 0.125)
+        close_r = img_close.get_rect(topright=(board_right, board_top))
         self.screen.blit(img_close, close_r)
         self.pause_btn_rects["close"] = close_r
 

@@ -4,6 +4,50 @@
 
 ---
 
+## 2026-03-26 — Pause Menu Close Button & Button Spacing Final Fix
+
+### Close Button — Measured Top-Right of Clipboard Board
+
+**Problem:** The close button was positioned at `panel_w * 0.57`, which placed
+it near the horizontal centre of the clipboard image rather than in the
+top-right corner. Users reported it looked "centred, not in the corner".
+
+**Root cause analysis:**
+- Programmatic image scan of `Pause Menu Background.png` (2000×1410) revealed
+  the clipboard board's actual right edge and top edge at various y-positions:
+  - y=10%: right edge at 60.2% (top clip area — narrower)
+  - y=12%: right edge at 69.0% (board body starts)
+  - y=15%+: right edge at ~72.5% (full board width)
+  - Left edge at y=15%+: ~27.0%
+- Previous code used 57% — roughly the midpoint of the *paper* area, not the
+  board edge.
+
+**Fix (`_draw_pause_overlay`):**
+- `board_right = panel_x + int(panel_w * 0.715)` — 0.5% inset from the
+  measured 72.5% right edge of the clipboard board.
+- `board_top = panel_y + int(panel_h * 0.125)` — just at the top of the
+  clipboard board body (below the metal clip).
+- Close button `topright` anchored to `(board_right, board_top)`.
+- Button size reduced to `max(28, int(panel_h * 0.07))` for a compact fit.
+
+### Button Spacing — Push Down from Title Area
+
+**Problem:** Pause menu buttons (Home, Sound, Back) were positioned too close
+to the top of the paper/title area, making the layout feel crowded.
+
+**Fix (`_draw_pause_overlay`):**
+- `btn_zone_top` changed from `paper_y + paper_h * 0.10` to
+  `paper_y + paper_h * 0.20` — doubles the top margin, creating clear
+  breathing room below the title/clip.
+- `btn_zone_bot` extended from `paper_h * 0.72` to `paper_h * 0.75`,
+  giving slightly more space for the button stack.
+- Buttons remain vertically centred within their zone and horizontally
+  centred on `paper_cx`.
+
+**No changes** to gameplay, audio system, or core UI structure.
+
+---
+
 ## 2026-03-26 — Fix Pause Button Overlap & Pause Menu Layout
 
 **What changed:**
@@ -369,7 +413,7 @@
 | `game/generator.py` | 110 | Procedural level generator with solver validation and desync filtering | `generate_level()`, `random_theme_config()`, `GenConfig` |
 | `game/assets.py` | 159 | Recursive art loader; theme/role classification by folder/filename keywords | `ArtLibrary`, `ArtBucket` |
 | `game/menu.py` | 161 | Full-screen main menu with Play, Controls, Rules, Close buttons and overlays | `MainMenu`, `MenuResult` |
-| `game/app.py` | 720 | Game loop, rendering, HUD, pause system, input handling, auto-fit display, zoom | `GameApp`, `LevelStats` |
+| `game/app.py` | ~1006 | Game loop, rendering, HUD, pause system, input handling, auto-fit display, zoom | `GameApp`, `LevelStats` |
 
 ---
 

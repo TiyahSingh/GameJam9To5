@@ -64,14 +64,6 @@
 - [x] Volume slider in pause menu — blue cartoonish style, real-time drag control
 - [x] Master volume system controlling all SFX + music simultaneously
 
-### Milestone 8 — Future Enhancements (Planned)
-- [ ] Level-select screen with star ratings displayed
-- [ ] Undo/redo move history
-- [ ] Animated character movement (tweened tile transitions)
-- [ ] Additional themes and level packs
-- [ ] Save/load progress to file
-- [ ] Accessibility options (colour-blind mode, larger fonts)
-- [ ] Packaging as standalone executable (PyInstaller / cx_Freeze)
 
 ---
 
@@ -106,10 +98,11 @@
 | 15 | Character sprites + player/goal tile colour highlights | Done | `app.py`, `assets.py` |
 | 16 | Procedural audio manager (SFX + music) | Done | `audio.py` |
 | 17 | Volume slider in pause menu | Done | `app.py`, `audio.py` |
-| 18 | Level-select screen | Planned | — |
-| 19 | Undo/redo system | Planned | — |
-| 20 | Character movement animation | Planned | — |
-| 21 | Standalone executable packaging | Planned | — |
+| 18 | Pause menu layout polish (close button, button spacing) | Done | `app.py` |
+| 19 | Level-select screen | Planned | — |
+| 20 | Undo/redo system | Planned | — |
+| 21 | Character movement animation | Planned | — |
+| 22 | Standalone executable packaging | Planned | — |
 
 ---
 
