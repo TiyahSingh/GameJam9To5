@@ -3,21 +3,40 @@
 # =============================================================================
 # Install all dependencies:  python -m pip install -r requirements.txt
 # Tested on:                 Python 3.13.12 / Windows 10
+# Compatible with:           Python 3.10+ (uses match-free syntax, slots=True
+#                            dataclasses, and PEP 604 union types X | Y)
+# Last updated:              2026-03-26
 # =============================================================================
 
 # -----------------------------------------------------------------------------
 # THIRD-PARTY LIBRARIES
 # -----------------------------------------------------------------------------
 
-# Pygame — core game framework
+# Pygame — core 2D game framework
 # Provides: window creation, 2D surface rendering, sprite blitting, event/input
-# handling (keyboard, mouse), image loading (PNG, JPG, GIF, WebP), font
-# rendering (SysFont), display management, clock/tick timing, and surface
-# transforms (smoothscale, rotate, flip).
+# handling (keyboard + mouse), image loading (PNG, JPG, GIF, WebP), system font
+# rendering (SysFont), display management, clock/tick timing, surface
+# transforms (smoothscale, rotate, flip), and colour/rect utilities.
+#
+# Pygame APIs used in this project:
+#   pygame.init / pygame.quit           — lifecycle (main.py)
+#   pygame.display.set_mode / flip      — window management (app.py, menu.py)
+#   pygame.display.Info                  — screen resolution query (app.py, menu.py)
+#   pygame.display.set_caption           — window title (app.py)
+#   pygame.event.get                     — input event loop (app.py, menu.py)
+#   pygame.time.Clock.tick               — 60 FPS frame cap (app.py)
+#   pygame.image.load / convert_alpha    — art asset loading (assets.py, menu.py)
+#   pygame.transform.smoothscale         — tile & background scaling (assets.py, menu.py)
+#   pygame.Surface / SRCALPHA            — off-screen surfaces for flash overlay (app.py)
+#   pygame.draw.rect / line              — fallback tile rendering, HUD panel (app.py)
+#   pygame.font.SysFont                  — HUD text rendering (app.py)
+#   pygame.Rect / collidepoint           — hit-testing for menu buttons (menu.py)
+#
 # Homepage: https://www.pygame.org
 # Licence:  LGPL v2.1
-# Note:     pygame-ce (community edition, https://pyga.me) is a drop-in
-#           replacement and also satisfies this requirement.
+# Note:     pygame-ce (community edition, https://pyga.me) is a fully
+#           compatible drop-in replacement and also satisfies this requirement.
+#           The game was developed and tested with pygame-ce 2.5.7.
 pygame>=2.5.2
 
 # -----------------------------------------------------------------------------
@@ -26,17 +45,35 @@ pygame>=2.5.2
 # These ship with Python and do NOT need to be installed. Listed here for
 # completeness so the full dependency footprint of the project is documented.
 #
-#   collections   — deque for BFS queue in the level solver
-#   dataclasses   — @dataclass for Level, Character, StepResult, Vec2, etc.
-#   enum          — Enum for Tile types, menu states, menu results
-#   os            — File-system walks for art asset loading, path joining
-#   random        — RNG for procedural level generation
-#   sys           — sys.exit for clean process termination
-#   typing        — Type hints (Iterable) for static analysis
+#   __future__    — `from __future__ import annotations` for PEP 604 unions
+#                   on older Python versions (all game/*.py modules)
+#   collections   — deque for the BFS frontier queue (solver.py)
+#   dataclasses   — @dataclass(slots=True) for Vec2, Tile, Level, Character,
+#                   StepResult, State, SolveResult, GenConfig, LevelStats,
+#                   ArtBucket (types.py, level.py, movement.py, solver.py,
+#                   generator.py, app.py, assets.py)
+#   enum          — Enum for Tile (7 members), MenuResult (3), _MenuState (3)
+#                   (types.py, menu.py)
+#   os            — os.walk for recursive art asset discovery, os.path.join /
+#                   dirname / relpath / splitext / isdir for path manipulation
+#                   (assets.py, app.py, menu.py)
+#   random        — random.Random instance for deterministic procedural level
+#                   generation; methods: randrange, random, choice
+#                   (generator.py, app.py)
+#   sys           — sys.exit via SystemExit for clean process termination
+#                   (main.py)
+#   typing        — Iterable type hint for iter_neighbors return type
+#                   (types.py)
 
 # -----------------------------------------------------------------------------
 # PLUGINS / EXTENSIONS
 # -----------------------------------------------------------------------------
 # None at this time. The game uses no Pygame plugins or external extensions.
 # All rendering, input, and audio are handled through the base Pygame API.
+#
+# The game does NOT use:
+#   - pygame.mixer (no audio/sound effects)
+#   - pygame.sprite (characters drawn manually, not via Sprite groups)
+#   - pygame.joystick (keyboard/mouse only)
+#   - Any external level editor or map format (levels are ASCII-defined)
 # =============================================================================
