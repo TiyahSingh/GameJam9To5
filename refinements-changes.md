@@ -369,4 +369,49 @@
 | `game/generator.py` | 110 | Procedural level generator with solver validation and desync filtering | `generate_level()`, `random_theme_config()`, `GenConfig` |
 | `game/assets.py` | 159 | Recursive art loader; theme/role classification by folder/filename keywords | `ArtLibrary`, `ArtBucket` |
 | `game/menu.py` | 161 | Full-screen main menu with Play, Controls, Rules, Close buttons and overlays | `MainMenu`, `MenuResult` |
-| `game/app.py` | 463 | Game loop, rendering, HUD, input handling, auto-fit display, zoom | `GameApp`, `LevelStats` |
+| `game/app.py` | 720 | Game loop, rendering, HUD, pause system, input handling, auto-fit display, zoom | `GameApp`, `LevelStats` |
+
+---
+
+## Change Log — 2026-03-26: Pause Menu Aspect Ratio, Close Button Anchor, Goal Tile Glow
+
+### Pause Menu Layout — Aspect-Ratio-Preserving Scaling
+
+**Problem:** The pause menu background (`Pause Menu Background.png`) was being scaled
+with independent width/height caps (`panel_w`, `panel_h`), causing the clipboard image
+to appear squished or stretched depending on the window aspect ratio.
+
+**Fix (`_draw_pause_overlay`):**
+- Read the native aspect ratio of `self.pause_bg_raw` (`raw_w / raw_h`).
+- Fit the panel inside the max bounds while preserving that ratio:
+  if `max_panel_w / aspect <= max_panel_h` → width-limited; else height-limited.
+- All child elements (paper area, buttons) are positioned relative to the
+  correctly proportioned panel, so the layout remains clean at any window size.
+- Buttons remain vertically stacked and horizontally centred within the paper area.
+
+### Close Game Button — Fixed Top-Right Anchor
+
+**Problem:** The Close Game button was placed inside the vertical button flow
+alongside the Pause button, which meant it drifted when more content was added
+to the HUD.
+
+**Fix (`_draw_hud`):**
+- Removed the Close Game button from the in-flow layout.
+- Anchored it to the top-right corner of the HUD using `topright=(w - clip_margin - 4, 4)`.
+- The Pause button remains centred below the zoom buttons.
+- This ensures the Close button is always visible and accessible regardless of
+  HUD content length.
+
+### Goal Tile Visual Glow Highlights
+
+**Requirement:** Add colour-coded glow to goal tiles so players can easily see
+where each character needs to go, without changing any gameplay logic.
+
+**Implementation (`_draw_grid`, between tile drawing and character drawing):**
+- Created two `SRCALPHA` surfaces at tile size:
+  - `glow_a`: `(80, 160, 255, 45)` — semi-transparent blue for Player A's goal.
+  - `glow_b`: `(200, 100, 255, 45)` — semi-transparent purple for Player B's goal.
+- After all tiles are drawn, a second pass over the grid blits the corresponding
+  glow overlay on `GOAL_A` and `GOAL_B` tiles.
+- A `3px` coloured border (`pygame.draw.rect`) is drawn on top for extra contrast.
+- **No changes** to `Tile` enum, collision, win-condition checks, or level parsing.

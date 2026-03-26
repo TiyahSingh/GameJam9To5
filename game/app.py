@@ -494,6 +494,21 @@ class GameApp:
                         deco = bucket.decor[(x * 3 + y * 5) % len(bucket.decor)]
                         self.screen.blit(deco, r.topleft)
 
+        # Goal tile glow highlights (visual only — no gameplay impact)
+        glow_a = pygame.Surface((self.tile_px, self.tile_px), pygame.SRCALPHA)
+        glow_b = pygame.Surface((self.tile_px, self.tile_px), pygame.SRCALPHA)
+        glow_a.fill((80, 160, 255, 45))
+        glow_b.fill((200, 100, 255, 45))
+        for y in range(self.level.h):
+            for x in range(self.level.w):
+                t = self.level.grid[y][x]
+                if t == Tile.GOAL_A or t == Tile.GOAL_B:
+                    r = pygame.Rect(x0 + x * self.tile_px, y0 + y * self.tile_px, self.tile_px, self.tile_px)
+                    g = glow_a if t == Tile.GOAL_A else glow_b
+                    self.screen.blit(g, r.topleft)
+                    color = (80, 160, 255) if t == Tile.GOAL_A else (200, 100, 255)
+                    pygame.draw.rect(self.screen, color, r, width=3, border_radius=6)
+
         # Characters
         def draw_char(p: Vec2, fallback_color: tuple[int, int, int], label: str, sprites: list[pygame.Surface]) -> None:
             r = pygame.Rect(
@@ -538,24 +553,33 @@ class GameApp:
         dim.fill((0, 0, 0, 140))
         self.screen.blit(dim, (0, 0))
 
-        # Scale the clipboard background to a centred panel
-        panel_w = min(420, int(w * 0.55))
-        panel_h = min(520, int(h * 0.75))
+        # Aspect-ratio-preserving fit for the clipboard background
+        raw_w, raw_h = self.pause_bg_raw.get_size()
+        aspect = raw_w / max(1, raw_h)
+        max_panel_w = min(420, int(w * 0.55))
+        max_panel_h = min(520, int(h * 0.75))
+        if max_panel_w / aspect <= max_panel_h:
+            panel_w = max_panel_w
+            panel_h = int(panel_w / aspect)
+        else:
+            panel_h = max_panel_h
+            panel_w = int(panel_h * aspect)
+
         bg_scaled = pygame.transform.smoothscale(self.pause_bg_raw, (panel_w, panel_h))
         panel_x = (w - panel_w) // 2
         panel_y = (h - panel_h) // 2
         self.screen.blit(bg_scaled, (panel_x, panel_y))
 
-        # The clipboard paper area sits inside the clipboard border.
-        # Approximate from the background image: paper starts ~12% from left,
-        # ~18% from top, extends to ~75% width, ~88% height.
-        paper_x = panel_x + int(panel_w * 0.12)
-        paper_y = panel_y + int(panel_h * 0.18)
-        paper_w = int(panel_w * 0.63)
-        paper_h = int(panel_h * 0.70)
+        # Paper area within the clipboard (measured from the source image).
+        # The clipboard board occupies the left ~80% of the image; the paper
+        # is inset within that board.
+        paper_x = panel_x + int(panel_w * 0.08)
+        paper_y = panel_y + int(panel_h * 0.22)
+        paper_w = int(panel_w * 0.66)
+        paper_h = int(panel_h * 0.68)
         paper_cx = paper_x + paper_w // 2
 
-        # Vertical button layout inside the paper area, below the "Menu" title
+        # Vertical button layout centred inside the paper, below the "Menu" title
         btn_gap = 14
         btns = [
             ("home", self.img_pm_home),
@@ -563,10 +587,8 @@ class GameApp:
             ("back", self.img_pm_back),
         ]
         total_btn_h = sum(b.get_height() for _, b in btns) + btn_gap * (len(btns) - 1)
-
-        # Centre the button stack vertically in the lower portion of the paper
-        btn_area_top = paper_y + int(paper_h * 0.28)
-        btn_area_bottom = paper_y + paper_h
+        btn_area_top = paper_y + int(paper_h * 0.22)
+        btn_area_bottom = paper_y + paper_h - 8
         by = btn_area_top + (btn_area_bottom - btn_area_top - total_btn_h) // 2
 
         self.pause_btn_rects.clear()
@@ -689,17 +711,14 @@ class GameApp:
         self.screen.blit(self.img_btn_zoom_out, r_out)
         self.hud_btn_rects["zoom_out"] = r_out
 
-        # Pause & Exit below zoom, side by side, centred on paper
+        # Pause button below zoom, centred
         y += max(r_in.height, r_out.height) + 10
-        pe_gap = 16
-        pe_total = self.img_btn_pause.get_width() + pe_gap + self.img_btn_exit.get_width()
-        pe_x = hud_cx - pe_total // 2
-
-        pause_r = self.img_btn_pause.get_rect(topleft=(pe_x, y))
+        pause_r = self.img_btn_pause.get_rect(centerx=hud_cx, top=y)
         self.screen.blit(self.img_btn_pause, pause_r)
         self.hud_btn_rects["pause"] = pause_r
 
-        exit_r = self.img_btn_exit.get_rect(topleft=(pe_x + self.img_btn_pause.get_width() + pe_gap, y))
+        # Close Game button — fixed top-right corner of HUD, outside the flow
+        exit_r = self.img_btn_exit.get_rect(topright=(w - clip_margin - 4, 4))
         self.screen.blit(self.img_btn_exit, exit_r)
         self.hud_btn_rects["exit"] = exit_r
 
