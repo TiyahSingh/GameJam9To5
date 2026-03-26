@@ -137,10 +137,9 @@ class GameApp:
 
         self.pause_bg_raw = load(bg_dir, "Pause Menu Background.png")
 
-        btn_size = 70
-        self.img_pm_back = self._crop_and_scale(load(pm_dir, "Back Button.png"), btn_size, btn_size)
-        self.img_pm_home = self._crop_and_scale(load(pm_dir, "Home Button.png"), btn_size, btn_size)
-        self.img_pm_sound = self._crop_and_scale(load(pm_dir, "Sound Button.png"), btn_size, btn_size)
+        self.pm_back_raw = load(pm_dir, "Back Button.png")
+        self.pm_home_raw = load(pm_dir, "Home Button.png")
+        self.pm_sound_raw = load(pm_dir, "Sound Button.png")
 
     def run(self) -> int:
         while True:
@@ -509,27 +508,37 @@ class GameApp:
                     color = (80, 160, 255) if t == Tile.GOAL_A else (200, 100, 255)
                     pygame.draw.rect(self.screen, color, r, width=3, border_radius=6)
 
-        # Characters
-        def draw_char(p: Vec2, fallback_color: tuple[int, int, int], label: str, sprites: list[pygame.Surface]) -> None:
-            r = pygame.Rect(
-                x0 + p.x * self.tile_px + 6,
-                y0 + p.y * self.tile_px + 6,
-                self.tile_px - 12,
-                self.tile_px - 12,
-            )
+        # Characters — colour identity matches goal tiles
+        color_a = (80, 160, 255)
+        color_b = (200, 100, 255)
+
+        def draw_char(
+            p: Vec2,
+            fallback_color: tuple[int, int, int],
+            label: str,
+            sprites: list[pygame.Surface],
+            identity_color: tuple[int, int, int],
+        ) -> None:
+            tile_r = pygame.Rect(x0 + p.x * self.tile_px, y0 + p.y * self.tile_px, self.tile_px, self.tile_px)
+
+            # Glow overlay on the tile beneath the character
+            glow = pygame.Surface((self.tile_px, self.tile_px), pygame.SRCALPHA)
+            glow.fill((*identity_color, 50))
+            self.screen.blit(glow, tile_r.topleft)
+            pygame.draw.rect(self.screen, identity_color, tile_r, width=3, border_radius=8)
+
+            r = tile_r.inflate(-12, -12)
             if sprites:
                 s = sprites[(p.x + p.y * 17) % len(sprites)]
-                # Sprites are already tile-sized; inset them a bit.
-                inset = pygame.Rect(r.x - 6, r.y - 6, self.tile_px, self.tile_px)
-                self.screen.blit(s, inset.topleft)
-                pygame.draw.rect(self.screen, (10, 10, 12), inset, width=2, border_radius=10)
+                self.screen.blit(s, tile_r.topleft)
+                pygame.draw.rect(self.screen, identity_color, tile_r, width=3, border_radius=10)
             else:
                 pygame.draw.rect(self.screen, fallback_color, r, border_radius=10)
                 txt = self.font_big.render(label, True, (10, 10, 12))
                 self.screen.blit(txt, txt.get_rect(center=r.center))
 
-        draw_char(self.a.pos, (120, 175, 255), "A", bucket.char_a)
-        draw_char(self.b.pos, (220, 135, 255), "B", bucket.char_b)
+        draw_char(self.a.pos, (120, 175, 255), "A", bucket.char_a, color_a)
+        draw_char(self.b.pos, (220, 135, 255), "B", bucket.char_b, color_b)
 
         # Grid border
         pygame.draw.rect(self.screen, (10, 10, 12), self._grid_rect_px(), width=3, border_radius=10)
@@ -553,11 +562,11 @@ class GameApp:
         dim.fill((0, 0, 0, 140))
         self.screen.blit(dim, (0, 0))
 
-        # Aspect-ratio-preserving fit for the clipboard background
+        # Aspect-ratio-preserving fit — generous sizing (up to 75% of screen)
         raw_w, raw_h = self.pause_bg_raw.get_size()
         aspect = raw_w / max(1, raw_h)
-        max_panel_w = min(420, int(w * 0.55))
-        max_panel_h = min(520, int(h * 0.75))
+        max_panel_w = int(w * 0.75)
+        max_panel_h = int(h * 0.85)
         if max_panel_w / aspect <= max_panel_h:
             panel_w = max_panel_w
             panel_h = int(panel_w / aspect)
@@ -570,25 +579,29 @@ class GameApp:
         panel_y = (h - panel_h) // 2
         self.screen.blit(bg_scaled, (panel_x, panel_y))
 
-        # Paper area within the clipboard (measured from the source image).
-        # The clipboard board occupies the left ~80% of the image; the paper
-        # is inset within that board.
+        # Paper area within the clipboard image
         paper_x = panel_x + int(panel_w * 0.08)
         paper_y = panel_y + int(panel_h * 0.22)
         paper_w = int(panel_w * 0.66)
         paper_h = int(panel_h * 0.68)
         paper_cx = paper_x + paper_w // 2
 
-        # Vertical button layout centred inside the paper, below the "Menu" title
-        btn_gap = 14
-        btns = [
-            ("home", self.img_pm_home),
-            ("sound", self.img_pm_sound),
-            ("back", self.img_pm_back),
+        # Scale buttons proportionally to the panel so they never look tiny
+        btn_size = max(60, int(panel_h * 0.14))
+        img_home = self._crop_and_scale(self.pm_home_raw, btn_size, btn_size)
+        img_sound = self._crop_and_scale(self.pm_sound_raw, btn_size, btn_size)
+        img_back = self._crop_and_scale(self.pm_back_raw, btn_size, btn_size)
+
+        # Vertical layout centred inside the paper with generous spacing
+        btn_gap = max(16, int(panel_h * 0.04))
+        btns: list[tuple[str, pygame.Surface]] = [
+            ("home", img_home),
+            ("sound", img_sound),
+            ("back", img_back),
         ]
         total_btn_h = sum(b.get_height() for _, b in btns) + btn_gap * (len(btns) - 1)
-        btn_area_top = paper_y + int(paper_h * 0.22)
-        btn_area_bottom = paper_y + paper_h - 8
+        btn_area_top = paper_y + int(paper_h * 0.18)
+        btn_area_bottom = paper_y + paper_h - int(paper_h * 0.06)
         by = btn_area_top + (btn_area_bottom - btn_area_top - total_btn_h) // 2
 
         self.pause_btn_rects.clear()

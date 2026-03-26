@@ -415,3 +415,50 @@ where each character needs to go, without changing any gameplay logic.
   glow overlay on `GOAL_A` and `GOAL_B` tiles.
 - A `3px` coloured border (`pygame.draw.rect`) is drawn on top for extra contrast.
 - **No changes** to `Tile` enum, collision, win-condition checks, or level parsing.
+
+---
+
+## Change Log — 2026-03-26: Player Tile Colour Identity, Pause Menu Scale-Up & Button Layout
+
+### Player Tile Colour-Coded Highlights
+
+**Requirement:** Player tiles must visually match their corresponding goal tiles so
+players can instantly see which goal belongs to which character.
+
+**Implementation (`_draw_grid` → `draw_char`):**
+- Each character now receives an `identity_color` parameter that matches its goal
+  colour: `(80, 160, 255)` for Player A (blue) and `(200, 100, 255)` for Player B
+  (purple).
+- Before the sprite/fallback is drawn, a semi-transparent `SRCALPHA` glow
+  `(*identity_color, 50)` is blitted onto the tile.
+- A `3px` coloured border in `identity_color` is drawn around the full tile rect.
+- When sprites are present the border is repeated on top of the sprite.
+- **Visual only** — no changes to movement, collision, or win-condition logic.
+
+### Pause Menu — Larger Panel with Aspect-Ratio Preservation
+
+**Problem:** The pause menu panel was capped at `420×520` pixels, making it feel
+cramped and not giving buttons enough room.
+
+**Fix (`_draw_pause_overlay`):**
+- Removed hard pixel caps. The panel now sizes up to **75% of screen width** and
+  **85% of screen height**, still preserving the native aspect ratio of
+  `Pause Menu Background.png`.
+- Calculation: `max_panel_w = int(w * 0.75)`, `max_panel_h = int(h * 0.85)`,
+  then fit within those bounds using `aspect = raw_w / raw_h`.
+
+### Pause Menu — Dynamically Scaled & Padded Buttons
+
+**Problem:** Buttons were pre-scaled to a fixed 70px during `_load_pause_assets`,
+so they stayed tiny when the panel grew.
+
+**Fix:**
+- Raw button images are now stored unscaled (`pm_home_raw`, `pm_sound_raw`,
+  `pm_back_raw`).
+- Inside `_draw_pause_overlay`, buttons are scaled proportionally to the panel:
+  `btn_size = max(60, int(panel_h * 0.14))`.
+- Gap between buttons is also proportional: `btn_gap = max(16, int(panel_h * 0.04))`.
+- Buttons are vertically centred in the lower 76% of the paper area
+  (`paper_h * 0.18` to `paper_h * 0.94`), with bottom padding of 6%.
+- All buttons remain horizontally centred on `paper_cx` and fully contained within
+  the clipboard panel at every window size.
