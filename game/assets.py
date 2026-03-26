@@ -29,14 +29,10 @@ def _theme_from_path(rel_parts: list[str]) -> str | None:
 def _role_from_name(rel_parts: list[str], filename: str) -> str:
     joined = "_".join(_norm(p) for p in rel_parts + [filename])
 
-    # Characters
-    if "character_1_elevator" in joined:
+    # Characters — order matters: more specific patterns first
+    if "character_1" in joined or "char_a" in joined or "worker_a" in joined or "player_a" in joined or "a_sprite" in joined:
         return "char_a"
-    if "character_2_elevator" in joined:
-        return "char_b"
-    if "char_a" in joined or "worker_a" in joined or "player_a" in joined or "a_sprite" in joined:
-        return "char_a"
-    if "char_b" in joined or "worker_b" in joined or "player_b" in joined or "b_sprite" in joined:
+    if "character_2" in joined or "char_b" in joined or "worker_b" in joined or "player_b" in joined or "b_sprite" in joined:
         return "char_b"
 
     # Tiles — "Obstacle *" images from each theme folder render as maze walls
@@ -154,5 +150,9 @@ class ArtLibrary:
             return self.global_bucket
         if not tb.wall and tb.blocker:
             tb.wall = list(tb.blocker)
+        if not tb.char_a and self.global_bucket.char_a:
+            tb.char_a = list(self.global_bucket.char_a)
+        if not tb.char_b and self.global_bucket.char_b:
+            tb.char_b = list(self.global_bucket.char_b)
         return tb
 
