@@ -4,6 +4,45 @@
 
 ---
 
+## 2026-03-26 — HUD Button Images Replace Text Controls
+
+**What changed:**
+- Replaced all text-based control instructions in the right-side HUD panel with custom button images from the art assets:
+  - **Reset Level** button (`New UI/Reset Level Button.png`) — replaces "R: reset (no penalty)" text
+  - **Generate New Level** button (`New UI/Generate New Level Button.png`) — replaces "G: generate level" text
+  - **Zoom In / Zoom Out** buttons (`New UI/Zoom In Button.png`, `New UI/Zoom Out Button.png`) — replace "+ / - : zoom in / out" text, placed side-by-side
+  - **Exit (Close Game)** button (`UI and Buttons/Close Game Button.png`) — placed in the top-right corner of the HUD panel
+- Removed all text lines from the "Controls" section: "WASD / Arrows: move", "Mouse click: move (from A)", "R: reset", "Progression: automatic", "G: generate level", "+ / - : zoom", "Esc: quit".
+- Each button is clickable and triggers the same action as its keyboard equivalent (Reset → R, Generate → G, Zoom In → +, Zoom Out → −, Exit → Esc).
+- All keyboard inputs remain fully functional and unchanged.
+
+**Technical detail:**
+- Added `_crop_and_scale()` static method to `GameApp`: uses `Surface.get_bounding_rect()` to crop transparent padding from the large canvas images (2000×1409 and 940×788), then `smoothscale`s to fit within the HUD width.
+- Added `_load_hud_buttons()` method: loads 5 button PNGs, crops and scales them, stores surfaces as instance attributes. Called on init, level load, and zoom change.
+- Button rects (`self.hud_btn_rects`) are computed each frame in `_draw_hud()` and checked for clicks in `_on_mouse_click()`.
+- `_on_mouse_click()` now returns `False` to signal quit (for the exit button), `None` otherwise. The game loop checks this return value.
+- Pill-shaped buttons (Reset, Generate) are scaled to `hud_w_px - 32` wide × 48px tall max; circular buttons (Zoom, Exit) to 44×44px max.
+
+**Design decision:**
+- Buttons are centered horizontally within the HUD panel for visual consistency.
+- Zoom buttons placed side-by-side on one row to save vertical space.
+- Exit button sits in the top-right corner of the screen, matching the menu's Close Game button placement.
+- The title, level info, move count, par, stars, and best scores remain as text — only the control instructions were replaced with images.
+
+---
+
+## 2026-03-26 — Character Images on Non-Elevator Levels
+
+**What changed:**
+- Updated `assets.py` role detection to classify `Character 1.png` → `char_a` and `Character 2.png` → `char_b` from the `Usual Characters` folder.
+- Updated `bucket_for_theme()` to inherit global character sprites into themed buckets that lack their own — all themes except Elevator now display the Usual Characters images instead of coloured rectangles with text labels.
+- Elevator level retains its own themed character sprites (`Character 1 Elevator.png` / `Character 2 Elevator.jpg`).
+
+**Impact:**
+- Visual-only change. No movement or gameplay logic was modified.
+
+---
+
 ## 2026-03-26 — AI Reflection, Ethics Declaration & References Added to README
 
 **What changed:**

@@ -56,6 +56,8 @@ class GameApp:
         self.art_root = os.path.join(os.path.dirname(os.path.dirname(__file__)), "GameArtImages")
         self.art = ArtLibrary(self.art_root, tile_px=self.tile_px)
 
+        self._load_hud_buttons()
+
         self.flash_ms = 0
         self.flash_color: tuple[int, int, int] | None = None
 
@@ -90,6 +92,36 @@ class GameApp:
         base_tile = max(min_tile, min(max_tile, by_w, by_h))
         self.tile_px = max(min_tile, min(max_tile, base_tile + self.user_zoom_offset))
 
+    @staticmethod
+    def _crop_and_scale(surf: pygame.Surface, max_w: int, max_h: int) -> pygame.Surface:
+        """Crop a surface to its opaque bounding box, then scale to fit within max_w x max_h."""
+        bbox = surf.get_bounding_rect()
+        cropped = surf.subsurface(bbox).copy()
+        cw, ch = cropped.get_size()
+        scale = min(max_w / max(1, cw), max_h / max(1, ch))
+        new_w = max(1, int(cw * scale))
+        new_h = max(1, int(ch * scale))
+        return pygame.transform.smoothscale(cropped, (new_w, new_h))
+
+    def _load_hud_buttons(self) -> None:
+        new_ui = os.path.join(self.art_root, "New UI")
+        ui_btn = os.path.join(self.art_root, "UI and Buttons")
+
+        def load(folder: str, name: str) -> pygame.Surface:
+            return pygame.image.load(os.path.join(folder, name)).convert_alpha()
+
+        btn_w = self.hud_w_px - 32
+        pill_h = 48
+        circle_size = 44
+
+        self.img_btn_reset = self._crop_and_scale(load(new_ui, "Reset Level Button.png"), btn_w, pill_h)
+        self.img_btn_generate = self._crop_and_scale(load(new_ui, "Generate New Level Button.png"), btn_w, pill_h)
+        self.img_btn_zoom_in = self._crop_and_scale(load(new_ui, "Zoom In Button.png"), circle_size, circle_size)
+        self.img_btn_zoom_out = self._crop_and_scale(load(new_ui, "Zoom Out Button.png"), circle_size, circle_size)
+        self.img_btn_exit = self._crop_and_scale(load(ui_btn, "Close Game Button.png"), circle_size, circle_size)
+
+        self.hud_btn_rects: dict[str, pygame.Rect] = {}
+
     def run(self) -> int:
         menu_result = self._run_menu()
         if menu_result == MenuResult.QUIT:
@@ -110,7 +142,9 @@ class GameApp:
                 elif ev.type == pygame.KEYDOWN:
                     running = self._on_keydown(ev.key)
                 elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                    self._on_mouse_click(ev.pos)
+                    click_result = self._on_mouse_click(ev.pos)
+                    if click_result is False:
+                        running = False
 
             self._draw()
         return 0
@@ -169,6 +203,7 @@ class GameApp:
         self.level_idx = max(0, min(idx, len(self.levels) - 1))
         self.level = self.levels[self.level_idx]
         self._fit_layout_to_screen(self.level)
+        self._load_hud_buttons()
         self.art = ArtLibrary(self.art_root, tile_px=self.tile_px)
         self.screen = pygame.display.set_mode(self._window_size())
         self._reset_level()
@@ -194,12 +229,14 @@ class GameApp:
         if key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
             self.user_zoom_offset = min(36, self.user_zoom_offset + 4)
             self._fit_layout_to_screen(self.level)
+            self._load_hud_buttons()
             self.art = ArtLibrary(self.art_root, tile_px=self.tile_px)
             self.screen = pygame.display.set_mode(self._window_size())
             return True
         if key in (pygame.K_MINUS, pygame.K_KP_MINUS):
             self.user_zoom_offset = max(-24, self.user_zoom_offset - 4)
             self._fit_layout_to_screen(self.level)
+            self._load_hud_buttons()
             self.art = ArtLibrary(self.art_root, tile_px=self.tile_px)
             self.screen = pygame.display.set_mode(self._window_size())
             return True
@@ -222,21 +259,45 @@ class GameApp:
             self._step(direction)
         return True
 
-    def _on_mouse_click(self, pos_px: tuple[int, int]) -> None:
+    def _on_mouse_click(self, pos_px: tuple[int, int]) -> bool | None:
+        """Returns False to quit, None otherwise."""
+        for action, rect in self.hud_btn_rects.items():
+            if rect.collidepoint(pos_px):
+                if action == "reset":
+                    self._reset_level()
+                elif action == "generate":
+                    self._generate_and_load()
+                elif action == "zoom_in":
+                    self.user_zoom_offset = min(36, self.user_zoom_offset + 4)
+                    self._fit_layout_to_screen(self.level)
+                    self._load_hud_buttons()
+                    self.art = ArtLibrary(self.art_root, tile_px=self.tile_px)
+                    self.screen = pygame.display.set_mode(self._window_size())
+                elif action == "zoom_out":
+                    self.user_zoom_offset = max(-24, self.user_zoom_offset - 4)
+                    self._fit_layout_to_screen(self.level)
+                    self._load_hud_buttons()
+                    self.art = ArtLibrary(self.art_root, tile_px=self.tile_px)
+                    self.screen = pygame.display.set_mode(self._window_size())
+                elif action == "exit":
+                    return False
+                return None
+
         if self.completed:
-            return
+            return None
         grid_p = self._px_to_grid(pos_px)
         if grid_p is None:
-            return
+            return None
         dx = grid_p.x - self.a.pos.x
         dy = grid_p.y - self.a.pos.y
         if dx == 0 and dy == 0:
-            return
+            return None
         if abs(dx) > abs(dy):
             direction = "right" if dx > 0 else "left"
         else:
             direction = "down" if dy > 0 else "up"
         self._step(direction)
+        return None
 
     def _step(self, direction: str) -> None:
         step = move_characters(self.level, self.a.pos, self.b.pos, direction)
@@ -451,12 +512,33 @@ class GameApp:
                 line(f"- Stars: {st.best_stars}", color=(210, 210, 220))
             y += 8
 
-        line("Controls", big=True)
-        line("WASD / Arrows: move")
-        line("Mouse click: move (from A)")
-        line("R: reset (no penalty)")
-        line("Progression: automatic")
-        line("G: generate level")
-        line("+ / - : zoom in / out")
-        line("Esc: quit")
+        hud_cx = hud_x + self.hud_w_px // 2
+        y += 6
+
+        def place_btn(name: str, img: pygame.Surface) -> None:
+            nonlocal y
+            r = img.get_rect(centerx=hud_cx, top=y)
+            self.screen.blit(img, r)
+            self.hud_btn_rects[name] = r
+            y += r.height + 8
+
+        place_btn("reset", self.img_btn_reset)
+        place_btn("generate", self.img_btn_generate)
+
+        y += 4
+        gap = 12
+        total_w = self.img_btn_zoom_in.get_width() + gap + self.img_btn_zoom_out.get_width()
+        zx = hud_cx - total_w // 2
+
+        r_in = self.img_btn_zoom_in.get_rect(topleft=(zx, y))
+        self.screen.blit(self.img_btn_zoom_in, r_in)
+        self.hud_btn_rects["zoom_in"] = r_in
+
+        r_out = self.img_btn_zoom_out.get_rect(topleft=(zx + self.img_btn_zoom_in.get_width() + gap, y))
+        self.screen.blit(self.img_btn_zoom_out, r_out)
+        self.hud_btn_rects["zoom_out"] = r_out
+
+        exit_r = self.img_btn_exit.get_rect(topright=(w - 8, 8))
+        self.screen.blit(self.img_btn_exit, exit_r)
+        self.hud_btn_rects["exit"] = exit_r
 
