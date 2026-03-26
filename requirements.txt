@@ -71,9 +71,17 @@ pygame>=2.5.2
 # None at this time. The game uses no Pygame plugins or external extensions.
 # All rendering, input, and audio are handled through the base Pygame API.
 #
+# Pygame sub-modules used:
+#   - pygame.mixer  — audio system: mixer.init, mixer.Sound, mixer.Channel
+#                     Used in game/audio.py for procedurally generated SFX
+#                     and looping background music (no external audio files).
+#
 # The game does NOT use:
-#   - pygame.mixer (no audio/sound effects)
 #   - pygame.sprite (characters drawn manually, not via Sprite groups)
 #   - pygame.joystick (keyboard/mouse only)
 #   - Any external level editor or map format (levels are ASCII-defined)
+#
+# Additional standard library modules used by the audio system:
+#   math   — sin, cos, pi for sine wave generation (audio.py)
+#   struct — pack / pack_into for 16-bit PCM sample encoding (audio.py)
 # =============================================================================

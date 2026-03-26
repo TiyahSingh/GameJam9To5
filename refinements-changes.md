@@ -652,3 +652,92 @@ and greyscale-converted. The resulting stars were unrecognisable.
   `star_r`, and never overlap text or buttons.
 
 **No changes** to gameplay, scoring logic (`_compute_stars`), or level design.
+
+---
+
+## Change Log — 2026-03-26: Fix Duplicate Star Display
+
+### Problem
+
+Two star rating systems were displayed simultaneously on level completion:
+1. The completion stars row (showing stars just earned).
+2. The "Best" section stars row (showing historical best stars for the level).
+
+Since `_record_completion` runs immediately, both `self.completed` and
+`st.completed` are `True` at the same time, causing overlapping duplicate
+star icons on the HUD paper.
+
+### Fix
+
+Added a guard condition to the "Best" section: `if st and st.completed
+and not self.completed`. This ensures the "Best" stars only render when the
+player is **not** in an active completion state, so there is exactly one
+star display at any time — the completion stars during the result flash, and
+the "Best" stars when revisiting a previously completed level.
+
+**No changes** to gameplay, scoring logic, or level design.
+
+---
+
+## Change Log — 2026-03-26: Audio System — Background Music & Sound Effects
+
+### New Module: `game/audio.py`
+
+A fully procedural audio manager — all sounds are generated at runtime using
+`math.sin` and `struct.pack` (no external `.wav` or `.ogg` files required).
+
+#### Architecture
+
+- **`AudioManager`** class initialised once in `GameApp.__init__`.
+- `pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)`.
+- Gracefully degrades: if mixer init fails, `self._available` is `False` and
+  all play methods become no-ops.
+
+#### Sound Effects (`_build_sfx`)
+
+Generated using `_generate_tone` (single sine wave) and `_generate_chord`
+(additive synthesis of multiple sine waves), with fade-in/out envelopes:
+
+| SFX Name       | Trigger                          | Freq/Chord        | Duration |
+|----------------|----------------------------------|--------------------|----------|
+| `click`        | Any UI button press              | 660 Hz             | 60 ms    |
+| `move`         | Player movement step             | 440 Hz             | 50 ms    |
+| `clue`         | Clue activation                  | C5 + E5 + G5      | 200 ms   |
+| `complete`     | Level completion                 | C5+E5+G5+C6       | 500 ms   |
+| `fail`         | Fell off edge / reset            | 220 Hz             | 180 ms   |
+| `pause_open`   | Pause menu opens                 | 500 Hz             | 80 ms    |
+| `pause_close`  | Pause menu closes                | 400 Hz             | 80 ms    |
+
+#### Background Music (`_build_music`)
+
+Theme-based ambient chord loops (8 s each, seamlessly looped via `play(loops=-1)`):
+
+| Theme        | Chord Frequencies            | Volume |
+|--------------|------------------------------|--------|
+| `Office`     | C4 + E4 + G4 + C5           | 0.06   |
+| `Elevator`   | A3 + C#4 + E4 + A4          | 0.05   |
+| `_default`   | B3 + D#4 + F#4 + B4         | 0.05   |
+
+Music automatically switches when a new level with a different theme loads.
+Volume is kept intentionally low to sit beneath SFX.
+
+#### Integration Points in `game/app.py`
+
+- `__init__`: creates `self.audio = AudioManager()`.
+- `_run_game`: starts music for current theme.
+- `_load_level`: switches music track on theme change.
+- `_step`: plays `move` on each step, `fail` on fall-off, `complete` on finish.
+- `_on_mouse_click`: plays `click` for all HUD buttons, plus `pause_open`
+  and `clue` for their specific actions.
+- `_on_pause_click`: plays `click`, handles `sound` toggle via
+  `audio.set_music_on(self.music_on)`, stops music on `home`.
+- Escape key: plays `pause_open`/`pause_close` on toggle.
+
+#### Music Toggle Integration
+
+The existing `self.music_on` flag and the pause menu Sound button now
+control actual audio playback via `audio.set_music_on(on)`. When toggled
+off, `stop_music()` silences the channel; when toggled back on,
+`play_music()` resumes the theme track.
+
+**No changes** to gameplay, scoring logic, or level design.

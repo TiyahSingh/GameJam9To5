@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import pygame
 
 from game.assets import ArtLibrary
+from game.audio import AudioManager
 from game.generator import generate_level, random_theme_config
 from game.level import Character, Level
 from game.levels import static_levels
@@ -59,6 +60,8 @@ class GameApp:
 
         self._load_hud_buttons()
         self._load_pause_assets()
+
+        self.audio = AudioManager()
 
         self.paused = False
         self.music_on = True
@@ -166,6 +169,7 @@ class GameApp:
         self.screen = pygame.display.set_mode(self._window_size())
         pygame.display.set_caption("9 to 5")
         self.paused = False
+        self.audio.play_music(self.level.theme)
 
         while True:
             dt_ms = self.clock.tick(60)
@@ -176,11 +180,14 @@ class GameApp:
                         return "quit"
                     elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
                         self.paused = False
+                        self.audio.play_sfx("pause_close")
                     elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                         result = self._on_pause_click(ev.pos)
                         if result == "resume":
                             self.paused = False
+                            self.audio.play_sfx("pause_close")
                         elif result == "home":
+                            self.audio.stop_music()
                             return "home"
                 self._draw()
                 self._draw_pause_overlay()
@@ -195,6 +202,7 @@ class GameApp:
                     elif ev.type == pygame.KEYDOWN:
                         if ev.key == pygame.K_ESCAPE:
                             self.paused = True
+                            self.audio.play_sfx("pause_open")
                         elif not self._on_keydown(ev.key):
                             return "quit"
                     elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
@@ -264,6 +272,7 @@ class GameApp:
         self.art = ArtLibrary(self.art_root, tile_px=self.tile_px)
         self.screen = pygame.display.set_mode(self._window_size())
         self._reset_level()
+        self.audio.play_music(self.level.theme)
 
     def _generate_and_load(self) -> None:
         cfg = random_theme_config(self.rng)
@@ -318,6 +327,7 @@ class GameApp:
         """Returns False to quit, None otherwise."""
         for action, rect in self.hud_btn_rects.items():
             if rect.collidepoint(pos_px):
+                self.audio.play_sfx("click")
                 if action == "reset":
                     self._reset_level()
                 elif action == "generate":
@@ -338,8 +348,10 @@ class GameApp:
                     return False
                 elif action == "pause":
                     self.paused = True
+                    self.audio.play_sfx("pause_open")
                 elif action == "clue":
                     self._activate_clue()
+                    self.audio.play_sfx("clue")
                 return None
 
         if self.completed:
@@ -363,6 +375,7 @@ class GameApp:
         step = move_characters(self.level, self.a.pos, self.b.pos, direction)
         if step.fell_off:
             self._set_flash((220, 70, 70), ms=220)
+            self.audio.play_sfx("fail")
             self._reset_level()
             return
 
@@ -372,10 +385,12 @@ class GameApp:
         self.a.pos = step.a_to
         self.b.pos = step.b_to
         self.move_count += 1
+        self.audio.play_sfx("move")
 
         if self.level.tile_at(self.a.pos) == Tile.GOAL_A and self.level.tile_at(self.b.pos) == Tile.GOAL_B:
             self.completed = True
             self._set_flash((70, 200, 120), ms=250)
+            self.audio.play_sfx("complete")
             self._record_completion()
             self.auto_advance_ms = 700
 
@@ -698,12 +713,15 @@ class GameApp:
         """Returns 'resume', 'home', or None."""
         for action, rect in self.pause_btn_rects.items():
             if rect.collidepoint(pos_px):
+                self.audio.play_sfx("click")
                 if action in ("back", "close"):
                     return "resume"
                 if action == "home":
+                    self.audio.stop_music()
                     return "home"
                 if action == "sound":
                     self.music_on = not self.music_on
+                    self.audio.set_music_on(self.music_on)
         return None
 
     def _draw_pause_overlay(self) -> None:
@@ -860,7 +878,7 @@ class GameApp:
         y += 10
 
         st = self.stats.get(self.level_idx)
-        if st and st.completed:
+        if st and st.completed and not self.completed:
             line("Best:", color=accent)
             if st.best_moves is not None:
                 line(f"  Moves: {st.best_moves}", color=accent)
