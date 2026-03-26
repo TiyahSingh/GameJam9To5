@@ -786,8 +786,17 @@ class GameApp:
         paper_h = int(panel_h * 0.68)
         paper_cx = paper_x + paper_w // 2
 
-        # Scale buttons proportionally — capped to leave room for the slider
-        btn_size = max(44, int(panel_h * 0.11))
+        # ── Adaptive layout: measure available space, then size to fit ──
+        content_top = paper_y + int(paper_h * 0.12)
+        content_bottom = paper_y + paper_h - int(paper_h * 0.04)
+        avail_h = content_bottom - content_top
+
+        # 3 buttons + 2 gaps + 1 slider-gap + slider (label + track)
+        # Budget: buttons ≈ 60%, gaps ≈ 15%, slider ≈ 25% of avail_h
+        btn_size = max(28, int(avail_h * 0.18))
+        btn_gap = max(4, int(avail_h * 0.04))
+        slider_gap = max(4, int(avail_h * 0.04))
+
         img_home = self._crop_and_scale(self.pm_home_raw, btn_size, btn_size)
         img_sound = self._crop_and_scale(self.pm_sound_raw, btn_size, btn_size)
         img_back = self._crop_and_scale(self.pm_back_raw, btn_size, btn_size)
@@ -798,25 +807,19 @@ class GameApp:
             ("back", img_back),
         ]
 
-        # Pre-compute slider dimensions so we can include it in total height
-        slider_font = pygame.font.SysFont("consolas", max(11, int(panel_h * 0.025)), bold=True)
+        slider_font_sz = max(9, int(avail_h * 0.06))
+        slider_font = pygame.font.SysFont("consolas", slider_font_sz, bold=True)
         vol_lbl_h = slider_font.size("Volume")[1]
-        track_h = max(8, int(panel_h * 0.020))
-        handle_r = max(7, int(track_h * 1.0))
-        slider_total_h = vol_lbl_h + 4 + track_h + handle_r
+        track_h = max(6, int(avail_h * 0.04))
+        handle_r = max(5, int(track_h * 0.9))
+        slider_h = vol_lbl_h + 3 + track_h + handle_r
 
-        btn_gap = max(8, int(panel_h * 0.025))
-        slider_gap = max(6, int(panel_h * 0.018))
-        total_content_h = (
-            sum(b.get_height() for _, b in btns)
-            + btn_gap * (len(btns) - 1)
-            + slider_gap
-            + slider_total_h
+        total_h = (
+            btn_size * 3 + btn_gap * 2
+            + slider_gap + slider_h
         )
 
-        content_top = paper_y + int(paper_h * 0.15)
-        content_bottom = paper_y + paper_h - int(paper_h * 0.05)
-        by = content_top + max(0, (content_bottom - content_top - total_content_h) // 2)
+        by = content_top + max(0, (avail_h - total_h) // 2)
 
         for name, img in btns:
             r = img.get_rect(centerx=paper_cx, top=by)
@@ -824,29 +827,29 @@ class GameApp:
             if name == "sound" and not self.music_on:
                 surf = img.copy()
                 sw, sh = surf.get_size()
-                pygame.draw.line(surf, (200, 40, 40), (4, 4), (sw - 4, sh - 4), 5)
-                pygame.draw.line(surf, (255, 60, 60), (5, 5), (sw - 5, sh - 5), 3)
+                pygame.draw.line(surf, (200, 40, 40), (4, 4), (sw - 4, sh - 4), 4)
+                pygame.draw.line(surf, (255, 60, 60), (5, 5), (sw - 5, sh - 5), 2)
             self.screen.blit(surf, r)
             self.pause_btn_rects[name] = r
             by += img.get_height() + btn_gap
 
-        # ── Volume Slider (compact, blue / cartoonish) ────────────────
-        by += slider_gap - btn_gap  # switch from btn_gap to slider_gap
+        # ── Volume Slider (compact, blue) ─────────────────────────────
+        by += slider_gap - btn_gap
         vol_pct = int(self.audio.volume * 100)
-        lbl = slider_font.render(f"Volume  {vol_pct}%", True, (60, 120, 200))
+        lbl = slider_font.render(f"Vol {vol_pct}%", True, (60, 120, 200))
         self.screen.blit(lbl, lbl.get_rect(centerx=paper_cx, top=by))
-        by += lbl.get_height() + 4
+        by += lbl.get_height() + 3
 
-        slider_margin = max(10, int(paper_w * 0.12))
-        track_x = paper_x + slider_margin
-        track_w = paper_w - slider_margin * 2
+        slider_inset = max(8, int(paper_w * 0.18))
+        track_x = paper_x + slider_inset
+        track_w = paper_w - slider_inset * 2
         track_y = by
 
-        hit_rect = pygame.Rect(
-            track_x - handle_r, track_y - handle_r,
-            track_w + handle_r * 2, track_h + handle_r * 2,
+        hit_pad = max(handle_r, 6)
+        self._slider_rect = pygame.Rect(
+            track_x - hit_pad, track_y - hit_pad,
+            track_w + hit_pad * 2, track_h + hit_pad * 2,
         )
-        self._slider_rect = hit_rect
 
         track_rect = pygame.Rect(track_x, track_y, track_w, track_h)
         pygame.draw.rect(self.screen, (180, 205, 235), track_rect, border_radius=track_h // 2)
@@ -854,17 +857,18 @@ class GameApp:
 
         fill_w = max(0, min(track_w, int(track_w * self.audio.volume)))
         if fill_w > 0:
-            fill_rect = pygame.Rect(track_x, track_y, fill_w, track_h)
-            pygame.draw.rect(self.screen, (80, 150, 230), fill_rect, border_radius=track_h // 2)
+            pygame.draw.rect(
+                self.screen, (80, 150, 230),
+                pygame.Rect(track_x, track_y, fill_w, track_h),
+                border_radius=track_h // 2,
+            )
 
-        handle_cx = track_x + fill_w
-        handle_cy = track_y + track_h // 2
-        pygame.draw.circle(self.screen, (255, 255, 255), (handle_cx, handle_cy), handle_r)
-        pygame.draw.circle(self.screen, (60, 130, 220), (handle_cx, handle_cy), handle_r, 2)
+        hx = track_x + fill_w
+        hy = track_y + track_h // 2
+        pygame.draw.circle(self.screen, (255, 255, 255), (hx, hy), handle_r)
+        pygame.draw.circle(self.screen, (60, 130, 220), (hx, hy), handle_r, 2)
         if self._dragging_slider:
-            pygame.draw.circle(self.screen, (100, 170, 245), (handle_cx, handle_cy), max(2, handle_r - 3))
-        else:
-            pygame.draw.circle(self.screen, (210, 230, 255), (handle_cx - 1, handle_cy - 1), max(2, handle_r - 4))
+            pygame.draw.circle(self.screen, (100, 170, 245), (hx, hy), max(2, handle_r - 2))
 
     def _draw_hud(self) -> None:
         w, h = self.screen.get_size()
