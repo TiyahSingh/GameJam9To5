@@ -774,17 +774,17 @@ class GameApp:
         # Close button — anchored to the top-right of the clipboard board area
         close_sz = max(36, int(panel_h * 0.09))
         img_close = self._crop_and_scale(self.pm_close_raw, close_sz, close_sz)
-        board_right = panel_x + int(panel_w * 0.74)
+        board_right = panel_x + int(panel_w * 0.68)
         close_r = img_close.get_rect(topright=(board_right, panel_y + int(panel_h * 0.04)))
         self.screen.blit(img_close, close_r)
         self.pause_btn_rects["close"] = close_r
 
-        # Paper area within the clipboard image
-        paper_x = panel_x + int(panel_w * 0.08)
+        # Paper area within the clipboard image (measured from actual white region)
+        paper_x = panel_x + int(panel_w * 0.306)
         paper_y = panel_y + int(panel_h * 0.22)
-        paper_w = int(panel_w * 0.66)
+        paper_w = int(panel_w * 0.383)
         paper_h = int(panel_h * 0.68)
-        paper_cx = paper_x + paper_w // 2
+        paper_cx = panel_x + int(panel_w * 0.497)
 
         # ── Layout: buttons centred in upper paper, slider anchored to bottom ──
         btn_zone_top = paper_y + int(paper_h * 0.10)
@@ -819,9 +819,7 @@ class GameApp:
             self.pause_btn_rects[name] = r
             by += img.get_height() + btn_gap
 
-        # ── Volume Slider — tiny, bottom-center of clipboard board ────
-        board_cx = panel_x + int(panel_w * 0.41)
-
+        # ── Volume Slider — tiny, bottom-center of paper ──────────────
         track_h = max(4, int(paper_h * 0.016))
         handle_r = max(4, int(track_h * 0.8))
         s_font = pygame.font.SysFont("consolas", max(8, int(paper_h * 0.028)))
@@ -829,12 +827,12 @@ class GameApp:
         vol_pct = int(self.audio.volume * 100)
         lbl = s_font.render(f"Vol {vol_pct}%", True, (80, 130, 200))
 
-        track_w = max(30, int(paper_w * 0.40))
-        track_x = board_cx - track_w // 2
+        track_w = max(30, int(paper_w * 0.60))
+        track_x = paper_cx - track_w // 2
         track_y = slider_zone_bot - track_h - handle_r
         lbl_y = track_y - lbl.get_height() - 2
 
-        self.screen.blit(lbl, lbl.get_rect(centerx=board_cx, top=lbl_y))
+        self.screen.blit(lbl, lbl.get_rect(centerx=paper_cx, top=lbl_y))
 
         hit_pad = max(handle_r + 2, 6)
         self._slider_rect = pygame.Rect(
