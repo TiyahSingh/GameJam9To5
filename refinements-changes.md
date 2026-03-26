@@ -4,6 +4,40 @@
 
 ---
 
+## 2026-03-26 — Pause System with UI Integration
+
+**What changed:**
+- Added a full **pause system** to the game using existing art assets:
+  - **Pause Button** (`New UI/Pause Button.png`) — blue circular button placed on the desk surface of the HUD panel (top-left corner, opposite the Exit button). Clicking it or pressing `Escape` pauses the game.
+  - **Pause Menu Overlay** — when paused, a semi-transparent dark overlay (`alpha=140`) covers the screen, and the **Pause Menu Background** (`Backrounds & Menus/Pause Menu Background.png`) — the office clipboard with the "NEVER GIVE UP!" whiteboard and office worker — is displayed centred on screen.
+  - Three interactive buttons from `Pause Menu Buttons/` are arranged in a horizontal row on the clipboard's paper area:
+    1. **Home** (`Home Button.png`) — blue circle with house icon. Returns the player to the start screen (main menu), preserving session stats.
+    2. **Sound** (`Sound Button.png`) — blue circle with music note. Toggles the `music_on` state; when OFF, a red diagonal strikethrough line is drawn over the button icon. Music system to be implemented later — this is the visual toggle placeholder.
+    3. **Back** (`Back Button.png`) — blue circle with left arrow. Closes the pause menu and resumes gameplay exactly where the player left off.
+
+**Technical detail:**
+- `GameApp.run()` restructured into a `while True` loop: `_run_menu()` → `_run_game()` → (if "home", loop back to menu; if "quit", exit). This supports returning to the start screen without restarting the application.
+- `_run_game()` returns `"quit"` or `"home"` as string signals, replacing the old `running` boolean.
+- When `self.paused` is `True`:
+  - Game updates (flash, auto-advance) and movement input are skipped.
+  - The normal game screen is drawn (frozen), then `_draw_pause_overlay()` composites the dim layer + clipboard background + buttons on top.
+  - `_on_pause_click()` handles clicks on the three pause menu buttons.
+- `Escape` key repurposed: now toggles pause (was: quit). The Exit button and window close still quit the game.
+- `_load_pause_assets()` loads the background and three button PNGs once at init. Button images are cropped to their opaque bounding box and scaled to 70×70px.
+- `self.pause_btn_rects` dict stores button hit-rects, cleared and recomputed each frame the pause overlay is drawn.
+- `self.music_on` (bool) tracks the sound toggle state. When `False`, a red diagonal strikethrough (`(200,40,40)` + `(255,60,60)`) is drawn over a copy of the Sound button surface.
+
+**Design decision:**
+- Pause overlay dims the game screen rather than hiding it — player can see their position while paused.
+- Buttons arranged horizontally (Home | Sound | Back) in the lower-centre of the clipboard, matching the layout suggested by the `7.png` UI mockup.
+- Escape now pauses instead of quitting — more intuitive for a game context.
+- Home returns to menu without resetting session stats (best moves/stars survive).
+
+**Impact:**
+- UI addition only. No gameplay mechanics, movement rules, or level logic were modified.
+
+---
+
 ## 2026-03-26 — Office-Themed Clipboard HUD & Updated Button Art
 
 **What changed:**

@@ -57,6 +57,11 @@ class GameApp:
         self.art = ArtLibrary(self.art_root, tile_px=self.tile_px)
 
         self._load_hud_buttons()
+        self._load_pause_assets()
+
+        self.paused = False
+        self.music_on = True
+        self.pause_btn_rects: dict[str, pygame.Rect] = {}
 
         self.flash_ms = 0
         self.flash_color: tuple[int, int, int] | None = None
@@ -119,35 +124,77 @@ class GameApp:
         self.img_btn_zoom_in = self._crop_and_scale(load(new_ui, "Zoom In Button.png"), circle_size, circle_size)
         self.img_btn_zoom_out = self._crop_and_scale(load(new_ui, "Zoom Out Button.png"), circle_size, circle_size)
         self.img_btn_exit = self._crop_and_scale(load(ui_btn, "Close Game Button.png"), circle_size, circle_size)
+        self.img_btn_pause = self._crop_and_scale(load(new_ui, "Pause Button.png"), circle_size, circle_size)
 
         self.hud_btn_rects: dict[str, pygame.Rect] = {}
 
-    def run(self) -> int:
-        menu_result = self._run_menu()
-        if menu_result == MenuResult.QUIT:
-            return 0
+    def _load_pause_assets(self) -> None:
+        bg_dir = os.path.join(self.art_root, "Backrounds & Menus")
+        pm_dir = os.path.join(self.art_root, "Pause Menu Buttons")
 
+        def load(folder: str, name: str) -> pygame.Surface:
+            return pygame.image.load(os.path.join(folder, name)).convert_alpha()
+
+        self.pause_bg_raw = load(bg_dir, "Pause Menu Background.png")
+
+        btn_size = 70
+        self.img_pm_back = self._crop_and_scale(load(pm_dir, "Back Button.png"), btn_size, btn_size)
+        self.img_pm_home = self._crop_and_scale(load(pm_dir, "Home Button.png"), btn_size, btn_size)
+        self.img_pm_sound = self._crop_and_scale(load(pm_dir, "Sound Button.png"), btn_size, btn_size)
+
+    def run(self) -> int:
+        while True:
+            menu_result = self._run_menu()
+            if menu_result == MenuResult.QUIT:
+                return 0
+
+            game_result = self._run_game()
+            if game_result == "quit":
+                return 0
+            # game_result == "home" → loop back to menu
+
+    def _run_game(self) -> str:
+        """Returns 'quit' to exit the app, 'home' to return to the main menu."""
         self.screen = pygame.display.set_mode(self._window_size())
         pygame.display.set_caption("9 to 5")
+        self.paused = False
 
-        running = True
-        while running:
+        while True:
             dt_ms = self.clock.tick(60)
-            self._update_flash(dt_ms)
-            self._update_auto_advance(dt_ms)
 
-            for ev in pygame.event.get():
-                if ev.type == pygame.QUIT:
-                    running = False
-                elif ev.type == pygame.KEYDOWN:
-                    running = self._on_keydown(ev.key)
-                elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                    click_result = self._on_mouse_click(ev.pos)
-                    if click_result is False:
-                        running = False
+            if self.paused:
+                for ev in pygame.event.get():
+                    if ev.type == pygame.QUIT:
+                        return "quit"
+                    elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
+                        self.paused = False
+                    elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                        result = self._on_pause_click(ev.pos)
+                        if result == "resume":
+                            self.paused = False
+                        elif result == "home":
+                            return "home"
+                self._draw()
+                self._draw_pause_overlay()
+                pygame.display.flip()
+            else:
+                self._update_flash(dt_ms)
+                self._update_auto_advance(dt_ms)
 
-            self._draw()
-        return 0
+                for ev in pygame.event.get():
+                    if ev.type == pygame.QUIT:
+                        return "quit"
+                    elif ev.type == pygame.KEYDOWN:
+                        if ev.key == pygame.K_ESCAPE:
+                            self.paused = True
+                        elif not self._on_keydown(ev.key):
+                            return "quit"
+                    elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                        click_result = self._on_mouse_click(ev.pos)
+                        if click_result is False:
+                            return "quit"
+
+                self._draw()
 
     def _run_menu(self) -> MenuResult:
         art_images_root = os.path.join(
@@ -215,8 +262,6 @@ class GameApp:
         self._load_level(len(self.levels) - 1)
 
     def _on_keydown(self, key: int) -> bool:
-        if key == pygame.K_ESCAPE:
-            return False
         if key == pygame.K_r:
             self._reset_level()
             return True
@@ -281,6 +326,8 @@ class GameApp:
                     self.screen = pygame.display.set_mode(self._window_size())
                 elif action == "exit":
                     return False
+                elif action == "pause":
+                    self.paused = True
                 return None
 
         if self.completed:
@@ -385,7 +432,8 @@ class GameApp:
             overlay.fill((*self.flash_color, alpha))
             self.screen.blit(overlay, (0, 0))
 
-        pygame.display.flip()
+        if not self.paused:
+            pygame.display.flip()
 
     def _draw_grid(self, pal: dict[str, tuple[int, int, int]]) -> None:
         x0, y0 = self._grid_origin_px()
@@ -470,6 +518,60 @@ class GameApp:
 
         # Grid border
         pygame.draw.rect(self.screen, (10, 10, 12), self._grid_rect_px(), width=3, border_radius=10)
+
+    def _on_pause_click(self, pos_px: tuple[int, int]) -> str | None:
+        """Returns 'resume', 'home', or None."""
+        for action, rect in self.pause_btn_rects.items():
+            if rect.collidepoint(pos_px):
+                if action == "back":
+                    return "resume"
+                if action == "home":
+                    return "home"
+                if action == "sound":
+                    self.music_on = not self.music_on
+        return None
+
+    def _draw_pause_overlay(self) -> None:
+        w, h = self.screen.get_size()
+
+        dim = pygame.Surface((w, h), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 140))
+        self.screen.blit(dim, (0, 0))
+
+        # Scale the clipboard background to a centred panel
+        panel_w = min(420, int(w * 0.55))
+        panel_h = min(520, int(h * 0.75))
+        bg_scaled = pygame.transform.smoothscale(self.pause_bg_raw, (panel_w, panel_h))
+        panel_x = (w - panel_w) // 2
+        panel_y = (h - panel_h) // 2
+        self.screen.blit(bg_scaled, (panel_x, panel_y))
+
+        # Place buttons in a row centred on the clipboard's paper area
+        btn_y = panel_y + int(panel_h * 0.62)
+        cx = w // 2
+        gap = 20
+        btns = [
+            ("home", self.img_pm_home),
+            ("sound", self.img_pm_sound),
+            ("back", self.img_pm_back),
+        ]
+        total_btn_w = sum(b.get_width() for _, b in btns) + gap * (len(btns) - 1)
+        bx = cx - total_btn_w // 2
+
+        self.pause_btn_rects.clear()
+        for name, img in btns:
+            r = img.get_rect(topleft=(bx, btn_y))
+            surf = img
+            if name == "sound" and not self.music_on:
+                surf = img.copy()
+                sw, sh = surf.get_size()
+                pygame.draw.line(surf, (200, 40, 40), (4, 4), (sw - 4, sh - 4), 5)
+                pygame.draw.line(surf, (255, 60, 60), (5, 5), (sw - 5, sh - 5), 3)
+            self.screen.blit(surf, r)
+            self.pause_btn_rects[name] = r
+            bx += img.get_width() + gap
+
+        pygame.display.flip()
 
     def _draw_hud(self) -> None:
         w, h = self.screen.get_size()
@@ -578,7 +680,11 @@ class GameApp:
         self.screen.blit(self.img_btn_zoom_out, r_out)
         self.hud_btn_rects["zoom_out"] = r_out
 
-        # Exit button in top-right corner of the desk
+        # Pause & Exit buttons on the desk surface (top of HUD)
+        pause_r = self.img_btn_pause.get_rect(topleft=(hud_x + clip_margin + 4, 24))
+        self.screen.blit(self.img_btn_pause, pause_r)
+        self.hud_btn_rects["pause"] = pause_r
+
         exit_r = self.img_btn_exit.get_rect(topright=(w - clip_margin - 4, 24))
         self.screen.blit(self.img_btn_exit, exit_r)
         self.hud_btn_rects["exit"] = exit_r
