@@ -741,3 +741,64 @@ off, `stop_music()` silences the channel; when toggled back on,
 `play_music()` resumes the theme track.
 
 **No changes** to gameplay, scoring logic, or level design.
+
+---
+
+## Change Log — 2026-03-26: Volume Slider & Background Music Upgrade
+
+### 1. Volume Slider in Pause Menu
+
+A draggable horizontal volume slider was added to the pause menu, placed
+below the Home / Sound / Back buttons inside the clipboard paper area.
+
+**UI Design:**
+- **Label**: "Volume: N%" rendered with Consolas font, colour `(42, 36, 28)`,
+  matching the existing HUD text style.
+- **Track**: Rounded-rect bar, background `(180, 168, 148)` with a
+  `(148, 118, 72)` border — blends with the clipboard paper aesthetic.
+- **Fill**: Filled portion rendered in accent brown `(90, 70, 45)`.
+- **Handle**: Cream circle `(248, 244, 235)` with accent outline. When
+  actively dragged, fills solid to provide visual feedback.
+- **Scaling**: All dimensions (`track_h`, `slider_margin`, `handle_r`,
+  font size) are proportional to `panel_h` for responsive layout.
+
+**Interaction:**
+- `MOUSEBUTTONDOWN` on the slider track starts dragging and immediately
+  sets volume to the clicked position.
+- `MOUSEMOTION` while dragging continuously updates volume in real time.
+- `MOUSEBUTTONUP` ends dragging.
+- Escape / resume / home actions all cancel any active drag.
+
+**Audio Integration:**
+- `AudioManager.set_volume(vol)` sets `_master_volume` (clamped 0.0–1.0),
+  then calls `_apply_volume()` which:
+  - Iterates all `sfx_*` Sound attributes and sets their volume to master.
+  - Sets music channel volume to `master * 0.5` (music sits beneath SFX).
+- Default volume: 60% (`AudioManager.DEFAULT_VOLUME = 0.6`).
+
+### 2. Background Music Upgrade
+
+Replaced the single-chord `_generate_chord` music with `_generate_ambient`,
+a richer procedural ambient pad generator.
+
+**`_generate_ambient` features:**
+- **Detuned oscillator pairs**: each root frequency is played alongside a
+  copy detuned by `detune_cents` (default 6 cents) — creates a subtle
+  chorus/shimmer effect.
+- **Sub-octave layer**: adds the root frequency halved (`f * 0.5`) at 40%
+  gain, giving warmth and body.
+- **LFO tremolo**: a slow sine-wave amplitude modulation at `lfo_hz`
+  (0.08–0.15 Hz) with configurable depth, producing gentle pulsing that
+  prevents the pad from sounding static.
+- **Long loops**: 16 seconds (up from 8), with 3–4 second fade envelopes
+  for seamless looping.
+
+**Theme tracks (all 16 s, looped):**
+
+| Theme      | Chord          | Detune | LFO Hz | LFO Depth | Feel                    |
+|------------|----------------|--------|--------|-----------|-------------------------|
+| Office     | Cmaj7 (C-E-G-B)| 7 ¢    | 0.12   | 0.30      | Warm corporate ambient  |
+| Elevator   | Am9 (A-C-E-B)  | 5 ¢    | 0.08   | 0.25      | Soft, dreamy lo-fi      |
+| _default   | Bm (B-D-F#-A)  | 6 ¢    | 0.10   | 0.28      | Gentle neutral ambient  |
+
+**No changes** to gameplay, scoring logic, movement rules, or level design.

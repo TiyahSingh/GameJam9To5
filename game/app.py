@@ -66,6 +66,8 @@ class GameApp:
         self.paused = False
         self.music_on = True
         self.pause_btn_rects: dict[str, pygame.Rect] = {}
+        self._slider_rect: pygame.Rect | None = None
+        self._dragging_slider = False
 
         self.clue_uses = 3
         self.clue_path: list[tuple[Vec2, Vec2, str]] | None = None
@@ -180,15 +182,25 @@ class GameApp:
                         return "quit"
                     elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
                         self.paused = False
+                        self._dragging_slider = False
                         self.audio.play_sfx("pause_close")
                     elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                        result = self._on_pause_click(ev.pos)
-                        if result == "resume":
-                            self.paused = False
-                            self.audio.play_sfx("pause_close")
-                        elif result == "home":
-                            self.audio.stop_music()
-                            return "home"
+                        if self._slider_rect and self._slider_rect.collidepoint(ev.pos):
+                            self._dragging_slider = True
+                            self._update_slider_from_mouse(ev.pos[0])
+                        else:
+                            result = self._on_pause_click(ev.pos)
+                            if result == "resume":
+                                self.paused = False
+                                self._dragging_slider = False
+                                self.audio.play_sfx("pause_close")
+                            elif result == "home":
+                                self.audio.stop_music()
+                                return "home"
+                    elif ev.type == pygame.MOUSEMOTION and self._dragging_slider:
+                        self._update_slider_from_mouse(ev.pos[0])
+                    elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
+                        self._dragging_slider = False
                 self._draw()
                 self._draw_pause_overlay()
                 pygame.display.flip()
@@ -709,6 +721,13 @@ class GameApp:
         # Grid border
         pygame.draw.rect(self.screen, (10, 10, 12), self._grid_rect_px(), width=3, border_radius=10)
 
+    def _update_slider_from_mouse(self, mx: int) -> None:
+        if self._slider_rect is None:
+            return
+        rel = (mx - self._slider_rect.x) / max(1, self._slider_rect.width)
+        vol = max(0.0, min(1.0, rel))
+        self.audio.set_volume(vol)
+
     def _on_pause_click(self, pos_px: tuple[int, int]) -> str | None:
         """Returns 'resume', 'home', or None."""
         for action, rect in self.pause_btn_rects.items():
@@ -793,6 +812,39 @@ class GameApp:
             self.screen.blit(surf, r)
             self.pause_btn_rects[name] = r
             by += img.get_height() + btn_gap
+
+        # ── Volume Slider ─────────────────────────────────────────────
+        slider_label_font = pygame.font.SysFont("consolas", max(12, int(panel_h * 0.028)))
+        label_color = (42, 36, 28)
+        vol_pct = int(self.audio.volume * 100)
+        lbl = slider_label_font.render(f"Volume: {vol_pct}%", True, label_color)
+        self.screen.blit(lbl, lbl.get_rect(centerx=paper_cx, top=by))
+        by += lbl.get_height() + max(4, int(panel_h * 0.012))
+
+        slider_margin = max(12, int(paper_w * 0.12))
+        track_h = max(8, int(panel_h * 0.018))
+        track_x = paper_x + slider_margin
+        track_w = paper_w - slider_margin * 2
+        track_y = by
+
+        track_rect = pygame.Rect(track_x, track_y, track_w, track_h)
+        self._slider_rect = track_rect
+
+        pygame.draw.rect(self.screen, (180, 168, 148), track_rect, border_radius=track_h // 2)
+        pygame.draw.rect(self.screen, (148, 118, 72), track_rect, width=2, border_radius=track_h // 2)
+
+        fill_w = int(track_w * self.audio.volume)
+        if fill_w > 0:
+            fill_rect = pygame.Rect(track_x, track_y, fill_w, track_h)
+            pygame.draw.rect(self.screen, (90, 70, 45), fill_rect, border_radius=track_h // 2)
+
+        handle_r = max(8, int(track_h * 1.4))
+        handle_cx = track_x + fill_w
+        handle_cy = track_y + track_h // 2
+        pygame.draw.circle(self.screen, (248, 244, 235), (handle_cx, handle_cy), handle_r)
+        pygame.draw.circle(self.screen, (90, 70, 45), (handle_cx, handle_cy), handle_r, 2)
+        if self._dragging_slider:
+            pygame.draw.circle(self.screen, (90, 70, 45), (handle_cx, handle_cy), handle_r - 3)
 
     def _draw_hud(self) -> None:
         w, h = self.screen.get_size()
