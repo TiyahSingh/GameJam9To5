@@ -618,3 +618,37 @@ produce the same optimal route.
 - In the "Best" section: the best star count is also shown as visual star icons
   instead of a text number.
 - Stars scale with the HUD layout and do not overlap other elements.
+
+---
+
+## Change Log — 2026-03-26: Procedural Star Rating Replaces Broken Asset Stars
+
+### Problem
+
+The `Star Rating.png` asset produced broken/random visuals when loaded, cropped,
+and greyscale-converted. The resulting stars were unrecognisable.
+
+### Fix — Fully Procedural Star Drawing
+
+**Removed:**
+- All loading of `Star Rating.png` from `GameArtImages/New UI`.
+- `self.img_star_filled` and `self.img_star_empty` surface references.
+- All `BLEND_RGB_MAX` / `BLEND_RGB_MIN` greyscale conversion code.
+
+**Added (`_draw_star`, `_draw_stars_row`):**
+- `_draw_star(cx, cy, radius, filled)`: draws a 10-vertex 5-pointed star polygon
+  using `math.cos` / `math.sin` at alternating outer (`radius`) and inner
+  (`radius * 0.42`) radii. Filled stars are gold `(230, 190, 50)` with a
+  `(180, 140, 20)` outline; empty stars are grey `(170, 170, 170)` with a
+  `(130, 130, 130)` outline.
+- `_draw_stars_row(cx, y, count, star_r)`: draws exactly 3 stars in a horizontal
+  row centred at `cx`. `count` stars are filled; the rest are grey. Returns the
+  `y` coordinate below the row for clean layout flow.
+
+**Usage in `_draw_hud`:**
+- On level completion: `_draw_stars_row(hud_cx, y, stars)` with `star_r=11`.
+- In the "Best" section: `_draw_stars_row(hud_cx, y, st.best_stars, star_r=9)`.
+- Stars are centred on the HUD paper, with automatic spacing that scales with
+  `star_r`, and never overlap text or buttons.
+
+**No changes** to gameplay, scoring logic (`_compute_stars`), or level design.

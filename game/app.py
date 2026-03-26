@@ -132,14 +132,6 @@ class GameApp:
         self.img_btn_pause = self._crop_and_scale(load(new_ui, "Pause Button.png"), circle_size, circle_size)
         self.img_btn_clue = self._crop_and_scale(load(new_ui, "Clue Button.png"), btn_w, pill_h)
 
-        star_size = 28
-        star_raw = load(new_ui, "Star Rating.png")
-        self.img_star_filled = self._crop_and_scale(star_raw, star_size, star_size)
-        grey_star = self.img_star_filled.copy()
-        grey_star.fill((150, 150, 150), special_flags=pygame.BLEND_RGB_MAX)
-        grey_star.fill((150, 150, 150), special_flags=pygame.BLEND_RGB_MIN)
-        self.img_star_empty = grey_star
-
         self.hud_btn_rects: dict[str, pygame.Rect] = {}
 
     def _load_pause_assets(self) -> None:
@@ -519,6 +511,28 @@ class GameApp:
             pygame.draw.polygon(surf, (*color, min(255, alpha + 30)), pts, 2)
         self.screen.blit(surf, (cx - mid, cy - mid))
 
+    def _draw_star(self, cx: int, cy: int, radius: int, filled: bool) -> None:
+        """Draw a 5-pointed star procedurally. Gold if filled, grey if empty."""
+        import math
+        color = (230, 190, 50) if filled else (170, 170, 170)
+        outline = (180, 140, 20) if filled else (130, 130, 130)
+        pts: list[tuple[float, float]] = []
+        for i in range(10):
+            angle = math.radians(-90 + i * 36)
+            r = radius if i % 2 == 0 else radius * 0.42
+            pts.append((cx + r * math.cos(angle), cy + r * math.sin(angle)))
+        pygame.draw.polygon(self.screen, color, pts)
+        pygame.draw.polygon(self.screen, outline, pts, 2)
+
+    def _draw_stars_row(self, cx: int, y: int, count: int, star_r: int = 11) -> int:
+        """Draw 3 stars centred at cx, returning the y below them."""
+        gap = star_r * 2 + 6
+        total_w = gap * 2
+        sx = cx - total_w // 2
+        for i in range(3):
+            self._draw_star(sx + i * gap, y + star_r, star_r, filled=(i < count))
+        return y + star_r * 2 + 4
+
     def _grid_origin_px(self) -> tuple[int, int]:
         return (self.pad_px, self.pad_px)
 
@@ -837,16 +851,8 @@ class GameApp:
 
         if self.completed:
             stars = self._compute_stars()
-            y += 2
-            star_gap = 4
-            sw = self.img_star_filled.get_width()
-            total_stars_w = sw * 3 + star_gap * 2
-            sx = hud_cx - total_stars_w // 2
-            for si in range(3):
-                img = self.img_star_filled if si < stars else self.img_star_empty
-                self.screen.blit(img, (sx, y))
-                sx += sw + star_gap
-            y += self.img_star_filled.get_height() + 4
+            y += 4
+            y = self._draw_stars_row(hud_cx, y, stars)
             if self.level_idx + 1 < len(self.levels):
                 line("Next level starting...", color=accent)
             else:
@@ -859,15 +865,7 @@ class GameApp:
             if st.best_moves is not None:
                 line(f"  Moves: {st.best_moves}", color=accent)
             if st.best_stars is not None:
-                best_sw = self.img_star_filled.get_width()
-                best_gap = 3
-                best_total_w = best_sw * 3 + best_gap * 2
-                bsx = text_x + 10
-                for si in range(3):
-                    img = self.img_star_filled if si < st.best_stars else self.img_star_empty
-                    self.screen.blit(img, (bsx, y))
-                    bsx += best_sw + best_gap
-                y += self.img_star_filled.get_height() + 5
+                y = self._draw_stars_row(hud_cx, y, st.best_stars, star_r=9)
             y += 6
 
         # --- Buttons on paper ---
