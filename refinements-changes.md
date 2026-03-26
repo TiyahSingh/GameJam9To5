@@ -528,3 +528,57 @@ in-game HUD, interactable and visually consistent.
 - Arrows are purely visual overlays; no changes to `Tile` enum, collision,
   movement rules, or win conditions.
 - The solver runs in a read-only BFS pass over the level state.
+
+---
+
+## Change Log — 2026-03-26: Pause Close Button Fix & Enhanced Clue Arrow System
+
+### Pause Menu Close Button — Critical Bug Fix
+
+**Root cause:** `self.pause_btn_rects.clear()` was called on line 685 *after* the
+close button rect had been registered on line 658. The close button was rendered
+but its click area was immediately wiped, making it impossible to click.
+
+**Fix (`_draw_pause_overlay`):**
+- Moved `self.pause_btn_rects.clear()` to the very start of the method, before
+  any button rects are registered.
+- Close button is now registered after the clear and before the main buttons,
+  so it persists in the dict and responds to clicks.
+- Increased size from `max(28, 7%)` to `max(36, 9%)` of panel height for better
+  visibility and click target area.
+- Repositioned to the top-right of the **clipboard board area** (at `74%` of
+  panel width), not the raw image edge, so it sits visually inside the frame.
+- `_on_pause_click` handles `"close"` identically to `"back"` → resumes gameplay.
+
+### Clue Arrow System — Enhanced Directional Guidance
+
+**Previous behaviour:** Only 5 arrows shown with uniform fading opacity.
+
+**New behaviour (`_draw_clue_arrows`, `_blit_arrow`):**
+
+1. **Full path displayed**: All steps of the BFS solution are shown, not just 5.
+   Each arrow's visual weight is computed from `progress = i / (total - 1)`.
+
+2. **Progressive intensity near the goal**:
+   - **Alpha**: 60 at the start → 220 at the final step.
+   - **Arrow size**: 60% of base at start → 100% at end (`size_frac`).
+   - **Outline**: Steps with alpha > 150 get an additional 2px polygon outline
+     for extra contrast on the critical final moves.
+
+3. **Connecting trail line**: A semi-transparent line is drawn from each tile
+   centre toward the next tile in the path. Line thickness and opacity also
+   increase with progress (2px → 6px, alpha 40 → 140).
+
+4. **Dual-player arrows**: Player B's path arrows appear for the last 60% of the
+   path (`progress >= 0.4`) in purple, at 80% of A's arrow size, ensuring the
+   player can see where both characters are headed.
+
+5. **Destination rings**: After the last step, two concentric circles are drawn on
+   the goal tiles — an inner ring at 120 alpha and an outer ring at 60 alpha —
+   clearly marking where each character will arrive.
+
+**Visual clarity priorities:**
+- Early path: minimal visual weight (small, transparent) to avoid clutter.
+- Corners and direction changes: fully visible since every step is drawn.
+- Final approach: maximum size, opacity, outlines, and destination rings.
+- No gameplay logic changes — arrows are `SRCALPHA` overlays only.

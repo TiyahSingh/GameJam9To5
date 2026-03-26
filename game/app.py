@@ -422,24 +422,76 @@ class GameApp:
         if not self.clue_path:
             return
         tp = self.tile_px
-        arrow_offsets = {
+        total = len(self.clue_path)
+        if total == 0:
+            return
+
+        dir_vecs = {
             "up": (0, -1), "down": (0, 1), "left": (-1, 0), "right": (1, 0),
         }
-        shown = min(5, len(self.clue_path))
-        for i in range(shown):
-            a_pos, _b_pos, direction = self.clue_path[i]
-            dx, dy = arrow_offsets[direction]
-            alpha = max(70, 200 - i * 30)
+        color_a = (80, 160, 255)
+        color_b = (200, 100, 255)
 
-            cx = x0 + a_pos.x * tp + tp // 2
-            cy = y0 + a_pos.y * tp + tp // 2
-            self._blit_arrow(cx, cy, dx, dy, (80, 160, 255), alpha, tp)
+        def tile_center(pos: Vec2) -> tuple[int, int]:
+            return x0 + pos.x * tp + tp // 2, y0 + pos.y * tp + tp // 2
+
+        # Draw a connecting trail line for Player A
+        trail_surf = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+        for i in range(total):
+            a_pos, _b, direction = self.clue_path[i]
+            dx, dy = dir_vecs[direction]
+            ax, ay = tile_center(a_pos)
+            next_ax = ax + dx * (tp // 2)
+            next_ay = ay + dy * (tp // 2)
+            progress = i / max(1, total - 1)
+            line_alpha = int(40 + 100 * progress)
+            pygame.draw.line(
+                trail_surf,
+                (*color_a, line_alpha),
+                (ax, ay), (next_ax, next_ay),
+                max(2, int(3 + 3 * progress)),
+            )
+        self.screen.blit(trail_surf, (0, 0))
+
+        # Draw arrows on each step for Player A — size and opacity increase near goal
+        for i in range(total):
+            a_pos, b_pos, direction = self.clue_path[i]
+            dx, dy = dir_vecs[direction]
+            progress = i / max(1, total - 1)
+
+            # Alpha: 60 at start → 220 at end; size: 60% → 100% of tile quarter
+            alpha = int(60 + 160 * progress)
+            size_frac = 0.6 + 0.4 * progress
+
+            ax, ay = tile_center(a_pos)
+            self._blit_arrow(ax, ay, dx, dy, color_a, alpha, tp, size_frac)
+
+            # Also draw on Player B for the last half of the path
+            if progress >= 0.4:
+                bx, by = tile_center(b_pos)
+                b_alpha = int(40 + 140 * progress)
+                self._blit_arrow(bx, by, dx, dy, color_b, b_alpha, tp, size_frac * 0.8)
+
+        # Ring on the final destination tiles
+        if total > 0:
+            last_a, last_b, last_dir = self.clue_path[-1]
+            final_step = move_characters(self.level, last_a, last_b, last_dir)
+            if not final_step.fell_off:
+                for pos, color in [(final_step.a_to, color_a), (final_step.b_to, color_b)]:
+                    cx, cy = tile_center(pos)
+                    ring = pygame.Surface((tp, tp), pygame.SRCALPHA)
+                    mid = tp // 2
+                    pygame.draw.circle(ring, (*color, 120), (mid, mid), tp // 3, 4)
+                    pygame.draw.circle(ring, (*color, 60), (mid, mid), tp // 3 + 4, 2)
+                    self.screen.blit(ring, (cx - mid, cy - mid))
 
     def _blit_arrow(
         self, cx: int, cy: int, dx: int, dy: int,
         color: tuple[int, int, int], alpha: int, tile_px: int,
+        size_frac: float = 1.0,
     ) -> None:
-        sz = max(8, tile_px // 4)
+        base_sz = max(8, tile_px // 4)
+        sz = max(6, int(base_sz * size_frac))
         surf = pygame.Surface((tile_px, tile_px), pygame.SRCALPHA)
         mid = tile_px // 2
         if dx == 1:
@@ -450,7 +502,10 @@ class GameApp:
             pts = [(mid, mid - sz), (mid - sz, mid + sz // 2), (mid + sz, mid + sz // 2)]
         else:
             pts = [(mid, mid + sz), (mid - sz, mid - sz // 2), (mid + sz, mid - sz // 2)]
-        pygame.draw.polygon(surf, (*color, alpha), pts)
+        pygame.draw.polygon(surf, (*color, min(255, alpha)), pts)
+        # Outline for extra clarity on final steps
+        if alpha > 150:
+            pygame.draw.polygon(surf, (*color, min(255, alpha + 30)), pts, 2)
         self.screen.blit(surf, (cx - mid, cy - mid))
 
     def _grid_origin_px(self) -> tuple[int, int]:
@@ -628,6 +683,7 @@ class GameApp:
 
     def _draw_pause_overlay(self) -> None:
         w, h = self.screen.get_size()
+        self.pause_btn_rects.clear()
 
         dim = pygame.Surface((w, h), pygame.SRCALPHA)
         dim.fill((0, 0, 0, 140))
@@ -650,10 +706,11 @@ class GameApp:
         panel_y = (h - panel_h) // 2
         self.screen.blit(bg_scaled, (panel_x, panel_y))
 
-        # Close button anchored to top-right of the panel
-        close_sz = max(28, int(panel_h * 0.07))
+        # Close button — anchored to the top-right of the clipboard board area
+        close_sz = max(36, int(panel_h * 0.09))
         img_close = self._crop_and_scale(self.pm_close_raw, close_sz, close_sz)
-        close_r = img_close.get_rect(topright=(panel_x + panel_w - 8, panel_y + 8))
+        board_right = panel_x + int(panel_w * 0.74)
+        close_r = img_close.get_rect(topright=(board_right, panel_y + int(panel_h * 0.04)))
         self.screen.blit(img_close, close_r)
         self.pause_btn_rects["close"] = close_r
 
@@ -682,7 +739,6 @@ class GameApp:
         btn_area_bottom = paper_y + paper_h - int(paper_h * 0.06)
         by = btn_area_top + (btn_area_bottom - btn_area_top - total_btn_h) // 2
 
-        self.pause_btn_rects.clear()
         for name, img in btns:
             r = img.get_rect(centerx=paper_cx, top=by)
             surf = img
