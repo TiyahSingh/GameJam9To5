@@ -101,7 +101,7 @@ def _generate_ambient(
 class AudioManager:
     """Singleton-style audio manager initialised once."""
 
-    DEFAULT_VOLUME = 0.6
+    DEFAULT_VOLUME = 0.7
 
     def __init__(self) -> None:
         try:
@@ -142,7 +142,7 @@ class AudioManager:
                 if isinstance(snd, pygame.mixer.Sound):
                     snd.set_volume(v)
         if self._music_channel is not None:
-            self._music_channel.set_volume(v * 0.5)
+            self._music_channel.set_volume(v * 0.8)
 
     # ── SFX ───────────────────────────────────────────────────────────
     def _build_sfx(self) -> None:
@@ -172,19 +172,19 @@ class AudioManager:
 
         self._music_tracks["Office"] = _generate_ambient(
             [261.6, 329.6, 392.0, 493.9],
-            dur, volume=0.07, detune_cents=8.0,
+            dur, volume=0.32, detune_cents=8.0,
             lfo_hz=0.10, lfo_depth=0.28, pan_hz=0.04, pan_amount=0.18,
             fade_ms=3500,
         )
         self._music_tracks["Elevator"] = _generate_ambient(
             [220.0, 261.6, 329.6, 493.9],
-            dur, volume=0.06, detune_cents=5.0,
+            dur, volume=0.28, detune_cents=5.0,
             lfo_hz=0.06, lfo_depth=0.22, pan_hz=0.03, pan_amount=0.22,
             fade_ms=5000,
         )
         self._music_tracks["_default"] = _generate_ambient(
             [246.9, 293.7, 370.0, 440.0],
-            dur, volume=0.06, detune_cents=6.0,
+            dur, volume=0.30, detune_cents=6.0,
             lfo_hz=0.08, lfo_depth=0.25, pan_hz=0.035, pan_amount=0.20,
             fade_ms=4000,
         )
@@ -209,7 +209,7 @@ class AudioManager:
         track = self._track_for_theme(theme)
         self._music_channel = track.play(loops=-1)
         if self._music_channel is not None:
-            self._music_channel.set_volume(self._master_volume * 0.5)
+            self._music_channel.set_volume(self._master_volume * 0.8)
 
     def stop_music(self) -> None:
         if self._music_channel is not None:

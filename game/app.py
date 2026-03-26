@@ -786,16 +786,14 @@ class GameApp:
         paper_h = int(panel_h * 0.68)
         paper_cx = paper_x + paper_w // 2
 
-        # ── Adaptive layout: measure available space, then size to fit ──
-        content_top = paper_y + int(paper_h * 0.12)
-        content_bottom = paper_y + paper_h - int(paper_h * 0.04)
-        avail_h = content_bottom - content_top
+        # ── Layout: buttons centred in upper paper, slider anchored to bottom ──
+        btn_zone_top = paper_y + int(paper_h * 0.10)
+        btn_zone_bot = paper_y + int(paper_h * 0.72)
+        slider_zone_bot = paper_y + paper_h - int(paper_h * 0.06)
 
-        # 3 buttons + 2 gaps + 1 slider-gap + slider (label + track)
-        # Budget: buttons ≈ 60%, gaps ≈ 15%, slider ≈ 25% of avail_h
-        btn_size = max(28, int(avail_h * 0.18))
-        btn_gap = max(4, int(avail_h * 0.04))
-        slider_gap = max(4, int(avail_h * 0.04))
+        btn_avail = btn_zone_bot - btn_zone_top
+        btn_size = max(28, int(btn_avail * 0.26))
+        btn_gap = max(4, int(btn_avail * 0.06))
 
         img_home = self._crop_and_scale(self.pm_home_raw, btn_size, btn_size)
         img_sound = self._crop_and_scale(self.pm_sound_raw, btn_size, btn_size)
@@ -806,20 +804,8 @@ class GameApp:
             ("sound", img_sound),
             ("back", img_back),
         ]
-
-        slider_font_sz = max(9, int(avail_h * 0.06))
-        slider_font = pygame.font.SysFont("consolas", slider_font_sz, bold=True)
-        vol_lbl_h = slider_font.size("Volume")[1]
-        track_h = max(6, int(avail_h * 0.04))
-        handle_r = max(5, int(track_h * 0.9))
-        slider_h = vol_lbl_h + 3 + track_h + handle_r
-
-        total_h = (
-            btn_size * 3 + btn_gap * 2
-            + slider_gap + slider_h
-        )
-
-        by = content_top + max(0, (avail_h - total_h) // 2)
+        btns_total = btn_size * 3 + btn_gap * 2
+        by = btn_zone_top + max(0, (btn_avail - btns_total) // 2)
 
         for name, img in btns:
             r = img.get_rect(centerx=paper_cx, top=by)
@@ -833,17 +819,22 @@ class GameApp:
             self.pause_btn_rects[name] = r
             by += img.get_height() + btn_gap
 
-        # ── Volume Slider (compact, blue) ─────────────────────────────
-        by += slider_gap - btn_gap
+        # ── Volume Slider — anchored to bottom of paper ───────────────
+        track_h = max(6, int(paper_h * 0.028))
+        handle_r = max(5, int(track_h * 0.85))
+        slider_font_sz = max(9, int(paper_h * 0.038))
+        slider_font = pygame.font.SysFont("consolas", slider_font_sz, bold=True)
+
         vol_pct = int(self.audio.volume * 100)
         lbl = slider_font.render(f"Vol {vol_pct}%", True, (60, 120, 200))
-        self.screen.blit(lbl, lbl.get_rect(centerx=paper_cx, top=by))
-        by += lbl.get_height() + 3
 
-        slider_inset = max(8, int(paper_w * 0.18))
+        slider_inset = max(8, int(paper_w * 0.20))
         track_x = paper_x + slider_inset
         track_w = paper_w - slider_inset * 2
-        track_y = by
+        track_y = slider_zone_bot - track_h - handle_r
+        lbl_y = track_y - lbl.get_height() - 3
+
+        self.screen.blit(lbl, lbl.get_rect(centerx=paper_cx, top=lbl_y))
 
         hit_pad = max(handle_r, 6)
         self._slider_rect = pygame.Rect(
