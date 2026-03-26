@@ -771,11 +771,11 @@ class GameApp:
         panel_y = (h - panel_h) // 2
         self.screen.blit(bg_scaled, (panel_x, panel_y))
 
-        # Close button — anchored to the top-right of the clipboard board area
-        close_sz = max(36, int(panel_h * 0.09))
+        # Close button — top-right of the visible clipboard (measured from image)
+        close_sz = max(28, int(panel_h * 0.07))
         img_close = self._crop_and_scale(self.pm_close_raw, close_sz, close_sz)
-        board_right = panel_x + int(panel_w * 0.68)
-        close_r = img_close.get_rect(topright=(board_right, panel_y + int(panel_h * 0.04)))
+        close_right = panel_x + int(panel_w * 0.57)
+        close_r = img_close.get_rect(topright=(close_right, panel_y + int(panel_h * 0.04)))
         self.screen.blit(img_close, close_r)
         self.pause_btn_rects["close"] = close_r
 
@@ -786,9 +786,9 @@ class GameApp:
         paper_h = int(panel_h * 0.68)
         paper_cx = panel_x + int(panel_w * 0.497)
 
-        # ── Layout: buttons centred in upper paper, slider anchored to bottom ──
-        btn_zone_top = paper_y + int(paper_h * 0.10)
-        btn_zone_bot = paper_y + int(paper_h * 0.72)
+        # ── Layout: buttons centred in paper (pushed down from title area) ──
+        btn_zone_top = paper_y + int(paper_h * 0.20)
+        btn_zone_bot = paper_y + int(paper_h * 0.75)
         slider_zone_bot = paper_y + paper_h - int(paper_h * 0.06)
 
         btn_avail = btn_zone_bot - btn_zone_top
