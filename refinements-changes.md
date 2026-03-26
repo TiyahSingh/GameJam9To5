@@ -582,3 +582,39 @@ but its click area was immediately wiped, making it impossible to click.
 - Corners and direction changes: fully visible since every step is drawn.
 - Final approach: maximum size, opacity, outlines, and destination rings.
 - No gameplay logic changes — arrows are `SRCALPHA` overlays only.
+
+---
+
+## Change Log — 2026-03-26: Clue 3-Star Transparency & Visual Star Rating Icons
+
+### Clue System — Optimal Path Verified, 3-Star Indicator Added
+
+**Verification:** The BFS solver (`solve_level_bfs`) is a standard breadth-first
+search on an unweighted state graph. BFS guarantees the shortest path; the move
+sequence returned is always the minimum-length solution from the given start
+positions to both goals. The solver is deterministic: same start positions always
+produce the same optimal route.
+
+**New feature — HUD move-count & star indicator:**
+- When a clue is active, the HUD now displays
+  `"Hint: N moves to goal"` showing the exact length of the BFS-optimal path.
+- If the level has a par target, an additional line shows whether 3-star or 2-star
+  completion is still achievable given `current_moves + optimal_remaining <= par`.
+- `self.clue_optimal_moves` stores the path length and is cleared on reset/load.
+- **No changes** to the solver, movement rules, scoring, or win conditions.
+
+### Star Rating — Visual Icons Replace Text
+
+**Previous:** Text-only `"Completed: N star(s)"` and `"Stars: N"` in Best section.
+
+**New (`_load_hud_buttons`, `_draw_hud`):**
+- `Star Rating.png` loaded from `GameArtImages/New UI`, cropped and scaled to 28px.
+- **Filled star** (`self.img_star_filled`): original coloured asset.
+- **Empty star** (`self.img_star_empty`): created by clamping all RGB channels to
+  `(150, 150, 150)` using `BLEND_RGB_MAX` then `BLEND_RGB_MIN`, preserving the
+  original alpha mask. No numpy dependency required.
+- On level completion: 3 stars are drawn side-by-side, horizontally centred on the
+  HUD paper. Earned stars use the filled image; missing stars use the grey image.
+- In the "Best" section: the best star count is also shown as visual star icons
+  instead of a text number.
+- Stars scale with the HUD layout and do not overlap other elements.

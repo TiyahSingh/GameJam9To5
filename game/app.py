@@ -66,6 +66,7 @@ class GameApp:
 
         self.clue_uses = 3
         self.clue_path: list[tuple[Vec2, Vec2, str]] | None = None
+        self.clue_optimal_moves = 0
 
         self.flash_ms = 0
         self.flash_color: tuple[int, int, int] | None = None
@@ -130,6 +131,14 @@ class GameApp:
         self.img_btn_exit = self._crop_and_scale(load(ui_btn, "Close Game Button.png"), circle_size, circle_size)
         self.img_btn_pause = self._crop_and_scale(load(new_ui, "Pause Button.png"), circle_size, circle_size)
         self.img_btn_clue = self._crop_and_scale(load(new_ui, "Clue Button.png"), btn_w, pill_h)
+
+        star_size = 28
+        star_raw = load(new_ui, "Star Rating.png")
+        self.img_star_filled = self._crop_and_scale(star_raw, star_size, star_size)
+        grey_star = self.img_star_filled.copy()
+        grey_star.fill((150, 150, 150), special_flags=pygame.BLEND_RGB_MAX)
+        grey_star.fill((150, 150, 150), special_flags=pygame.BLEND_RGB_MIN)
+        self.img_star_empty = grey_star
 
         self.hud_btn_rects: dict[str, pygame.Rect] = {}
 
@@ -253,6 +262,7 @@ class GameApp:
         self.completed = False
         self.auto_advance_ms = None
         self.clue_path = None
+        self.clue_optimal_moves = 0
 
     def _load_level(self, idx: int) -> None:
         self.level_idx = max(0, min(idx, len(self.levels) - 1))
@@ -416,6 +426,7 @@ class GameApp:
                 break
             a, b = step.a_to, step.b_to
         self.clue_path = path
+        self.clue_optimal_moves = len(result.moves)
         self.clue_uses -= 1
 
     def _draw_clue_arrows(self, x0: int, y0: int) -> None:
@@ -792,6 +803,7 @@ class GameApp:
 
         # --- Text on paper ---
         text_x = paper.x + 10
+        hud_cx = hud_x + self.hud_w_px // 2
         y = paper.y + 8
 
         dark = (42, 36, 28)
@@ -813,9 +825,28 @@ class GameApp:
         line(f"Moves: {self.move_count}", color=dark)
         if self.level.par_moves is not None:
             line(f"Par: {self.level.par_moves}", color=accent)
+
+        if self.clue_path is not None and not self.completed:
+            total_if_follow = self.move_count + self.clue_optimal_moves
+            line(f"Hint: {self.clue_optimal_moves} moves to goal", color=(40, 100, 180))
+            if self.level.par_moves is not None:
+                if total_if_follow <= self.level.par_moves:
+                    line("3-star still possible!", color=green)
+                elif total_if_follow <= self.level.par_moves + 3:
+                    line("2-star possible", color=accent)
+
         if self.completed:
             stars = self._compute_stars()
-            line(f"Completed: {stars} star(s)", color=green)
+            y += 2
+            star_gap = 4
+            sw = self.img_star_filled.get_width()
+            total_stars_w = sw * 3 + star_gap * 2
+            sx = hud_cx - total_stars_w // 2
+            for si in range(3):
+                img = self.img_star_filled if si < stars else self.img_star_empty
+                self.screen.blit(img, (sx, y))
+                sx += sw + star_gap
+            y += self.img_star_filled.get_height() + 4
             if self.level_idx + 1 < len(self.levels):
                 line("Next level starting...", color=accent)
             else:
@@ -828,11 +859,18 @@ class GameApp:
             if st.best_moves is not None:
                 line(f"  Moves: {st.best_moves}", color=accent)
             if st.best_stars is not None:
-                line(f"  Stars: {st.best_stars}", color=accent)
+                best_sw = self.img_star_filled.get_width()
+                best_gap = 3
+                best_total_w = best_sw * 3 + best_gap * 2
+                bsx = text_x + 10
+                for si in range(3):
+                    img = self.img_star_filled if si < st.best_stars else self.img_star_empty
+                    self.screen.blit(img, (bsx, y))
+                    bsx += best_sw + best_gap
+                y += self.img_star_filled.get_height() + 5
             y += 6
 
         # --- Buttons on paper ---
-        hud_cx = hud_x + self.hud_w_px // 2
         y += 4
 
         def place_btn(name: str, img: pygame.Surface) -> None:
