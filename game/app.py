@@ -546,21 +546,32 @@ class GameApp:
         panel_y = (h - panel_h) // 2
         self.screen.blit(bg_scaled, (panel_x, panel_y))
 
-        # Place buttons in a row centred on the clipboard's paper area
-        btn_y = panel_y + int(panel_h * 0.62)
-        cx = w // 2
-        gap = 20
+        # The clipboard paper area sits inside the clipboard border.
+        # Approximate from the background image: paper starts ~12% from left,
+        # ~18% from top, extends to ~75% width, ~88% height.
+        paper_x = panel_x + int(panel_w * 0.12)
+        paper_y = panel_y + int(panel_h * 0.18)
+        paper_w = int(panel_w * 0.63)
+        paper_h = int(panel_h * 0.70)
+        paper_cx = paper_x + paper_w // 2
+
+        # Vertical button layout inside the paper area, below the "Menu" title
+        btn_gap = 14
         btns = [
             ("home", self.img_pm_home),
             ("sound", self.img_pm_sound),
             ("back", self.img_pm_back),
         ]
-        total_btn_w = sum(b.get_width() for _, b in btns) + gap * (len(btns) - 1)
-        bx = cx - total_btn_w // 2
+        total_btn_h = sum(b.get_height() for _, b in btns) + btn_gap * (len(btns) - 1)
+
+        # Centre the button stack vertically in the lower portion of the paper
+        btn_area_top = paper_y + int(paper_h * 0.28)
+        btn_area_bottom = paper_y + paper_h
+        by = btn_area_top + (btn_area_bottom - btn_area_top - total_btn_h) // 2
 
         self.pause_btn_rects.clear()
         for name, img in btns:
-            r = img.get_rect(topleft=(bx, btn_y))
+            r = img.get_rect(centerx=paper_cx, top=by)
             surf = img
             if name == "sound" and not self.music_on:
                 surf = img.copy()
@@ -569,9 +580,7 @@ class GameApp:
                 pygame.draw.line(surf, (255, 60, 60), (5, 5), (sw - 5, sh - 5), 3)
             self.screen.blit(surf, r)
             self.pause_btn_rects[name] = r
-            bx += img.get_width() + gap
-
-        pygame.display.flip()
+            by += img.get_height() + btn_gap
 
     def _draw_hud(self) -> None:
         w, h = self.screen.get_size()
@@ -680,12 +689,17 @@ class GameApp:
         self.screen.blit(self.img_btn_zoom_out, r_out)
         self.hud_btn_rects["zoom_out"] = r_out
 
-        # Pause & Exit buttons on the desk surface (top of HUD)
-        pause_r = self.img_btn_pause.get_rect(topleft=(hud_x + clip_margin + 4, 24))
+        # Pause & Exit below zoom, side by side, centred on paper
+        y += max(r_in.height, r_out.height) + 10
+        pe_gap = 16
+        pe_total = self.img_btn_pause.get_width() + pe_gap + self.img_btn_exit.get_width()
+        pe_x = hud_cx - pe_total // 2
+
+        pause_r = self.img_btn_pause.get_rect(topleft=(pe_x, y))
         self.screen.blit(self.img_btn_pause, pause_r)
         self.hud_btn_rects["pause"] = pause_r
 
-        exit_r = self.img_btn_exit.get_rect(topright=(w - clip_margin - 4, 24))
+        exit_r = self.img_btn_exit.get_rect(topleft=(pe_x + self.img_btn_pause.get_width() + pe_gap, y))
         self.screen.blit(self.img_btn_exit, exit_r)
         self.hud_btn_rects["exit"] = exit_r
 

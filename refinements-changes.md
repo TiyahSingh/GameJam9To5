@@ -4,6 +4,23 @@
 
 ---
 
+## 2026-03-26 — Fix Pause Button Overlap & Pause Menu Layout
+
+**What changed:**
+- **Pause button moved**: relocated from the clipboard header (where it overlapped the title text) to below the Zoom In/Out row on the paper area. It now sits side-by-side with the Exit button, centred horizontally on the paper — no overlap with any text or other buttons.
+- **Pause menu buttons constrained to clipboard**: all three buttons (Home, Sound, Back) are now placed in a **vertical stack** anchored inside the paper area of the clipboard background. Button positions are calculated relative to the paper bounds (12%–75% width, 18%–88% height of the panel), not as absolute screen coordinates.
+- Buttons are vertically centred within the lower 72% of the paper area (below the "Menu" title), with 14px gaps between them.
+- No buttons float outside the clipboard panel at any window size.
+
+**Design decision:**
+- Vertical button layout chosen over horizontal row — fits better in the tall, narrow paper area of the clipboard and avoids buttons extending past the edges.
+- Pause and Exit buttons share a row at the bottom of the HUD controls section, keeping the top of the clipboard clean for the metal clip and title.
+
+**Impact:**
+- Visual/layout fix only. No gameplay logic changed.
+
+---
+
 ## 2026-03-26 — Pause System with UI Integration
 
 **What changed:**
