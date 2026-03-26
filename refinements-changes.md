@@ -462,3 +462,69 @@ so they stayed tiny when the panel grew.
   (`paper_h * 0.18` to `paper_h * 0.94`), with bottom padding of 6%.
 - All buttons remain horizontally centred on `paper_cx` and fully contained within
   the clipboard panel at every window size.
+
+---
+
+## Change Log — 2026-03-26: Pause Menu Close Button, Clue Button & Clue System
+
+### Pause Menu — Close Button (Top-Right of Panel)
+
+**Requirement:** A close button anchored to the top-right corner of the pause menu
+panel that closes the menu and resumes gameplay.
+
+**Implementation (`_draw_pause_overlay`):**
+- Loads `Close Game Button.png` from `UI and Buttons` (raw surface stored as
+  `self.pm_close_raw` in `_load_pause_assets`).
+- Dynamically scaled to `max(28, int(panel_h * 0.07))` pixels.
+- Anchored via `topright=(panel_x + panel_w - 8, panel_y + 8)` — relative to
+  the **panel**, not the screen.
+- Registered in `self.pause_btn_rects["close"]`.
+- `_on_pause_click` treats `"close"` identically to `"back"` → resumes gameplay.
+
+### HUD — Clue Button Added
+
+**Requirement:** Add the `Clue Button.png` from `GameArtImages/New UI` to the
+in-game HUD, interactable and visually consistent.
+
+**Implementation (`_load_hud_buttons`, `_draw_hud`):**
+- `Clue Button.png` loaded, cropped, and scaled to the same pill dimensions as
+  Reset and Generate buttons.
+- Placed in the vertical button flow below the Zoom In/Out row, above the Pause
+  button.
+- A `"Clues: N"` text label is rendered directly below the button showing
+  remaining uses.
+- When `clue_uses <= 0`, a semi-transparent grey overlay is composited onto the
+  button to indicate it is disabled.
+- Registered as `self.hud_btn_rects["clue"]`; click triggers `_activate_clue()`.
+
+### Clue System — BFS Path Hints with Usage Limits
+
+**Core mechanic:**
+- Player starts with **3 clue uses** (`self.clue_uses = 3`), shared across all
+  levels.
+- Clicking the Clue button runs `solve_level_bfs()` from the player's **current**
+  positions (not level start) to find the optimal move sequence.
+- The solver was extended with optional `a_start` / `b_start` parameters to
+  support mid-game solving.
+
+**Arrow display (`_draw_clue_arrows`, `_blit_arrow`):**
+- Up to **5 steps** of the optimal path are shown as directional triangle arrows
+  overlaid on Player A's tiles.
+- Each arrow is a `pygame.Surface` with `SRCALPHA`; opacity fades from 200 →
+  70 across the 5 steps for depth perception.
+- Arrow triangles are rendered via `pygame.draw.polygon` pointing in the move
+  direction.
+- Arrows are cleared automatically when the player makes any move, resets the
+  level, or loads a new level.
+
+**Usage limits & rewards:**
+- Each clue activation decrements `self.clue_uses` by 1.
+- At 0 uses the button is visually greyed out and `_activate_clue()` returns
+  immediately.
+- Achieving a **3-star** rating on a level for the first time awards **+1 clue
+  use** (checked in `_record_completion` — only awards if `prev_best_stars < 3`).
+
+**No gameplay impact:**
+- Arrows are purely visual overlays; no changes to `Tile` enum, collision,
+  movement rules, or win conditions.
+- The solver runs in a read-only BFS pass over the level state.

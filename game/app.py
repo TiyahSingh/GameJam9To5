@@ -12,6 +12,7 @@ from game.level import Character, Level
 from game.levels import static_levels
 from game.menu import MainMenu, MenuResult
 from game.movement import move_characters
+from game.solver import solve_level_bfs
 from game.types import Tile, Vec2
 
 
@@ -62,6 +63,9 @@ class GameApp:
         self.paused = False
         self.music_on = True
         self.pause_btn_rects: dict[str, pygame.Rect] = {}
+
+        self.clue_uses = 3
+        self.clue_path: list[tuple[Vec2, Vec2, str]] | None = None
 
         self.flash_ms = 0
         self.flash_color: tuple[int, int, int] | None = None
@@ -125,6 +129,7 @@ class GameApp:
         self.img_btn_zoom_out = self._crop_and_scale(load(new_ui, "Zoom Out Button.png"), circle_size, circle_size)
         self.img_btn_exit = self._crop_and_scale(load(ui_btn, "Close Game Button.png"), circle_size, circle_size)
         self.img_btn_pause = self._crop_and_scale(load(new_ui, "Pause Button.png"), circle_size, circle_size)
+        self.img_btn_clue = self._crop_and_scale(load(new_ui, "Clue Button.png"), btn_w, pill_h)
 
         self.hud_btn_rects: dict[str, pygame.Rect] = {}
 
@@ -140,6 +145,9 @@ class GameApp:
         self.pm_back_raw = load(pm_dir, "Back Button.png")
         self.pm_home_raw = load(pm_dir, "Home Button.png")
         self.pm_sound_raw = load(pm_dir, "Sound Button.png")
+
+        ui_btn = os.path.join(self.art_root, "UI and Buttons")
+        self.pm_close_raw = load(ui_btn, "Close Game Button.png")
 
     def run(self) -> int:
         while True:
@@ -244,6 +252,7 @@ class GameApp:
         self.move_count = 0
         self.completed = False
         self.auto_advance_ms = None
+        self.clue_path = None
 
     def _load_level(self, idx: int) -> None:
         self.level_idx = max(0, min(idx, len(self.levels) - 1))
@@ -327,6 +336,8 @@ class GameApp:
                     return False
                 elif action == "pause":
                     self.paused = True
+                elif action == "clue":
+                    self._activate_clue()
                 return None
 
         if self.completed:
@@ -346,6 +357,7 @@ class GameApp:
         return None
 
     def _step(self, direction: str) -> None:
+        self.clue_path = None
         step = move_characters(self.level, self.a.pos, self.b.pos, direction)
         if step.fell_off:
             self._set_flash((220, 70, 70), ms=220)
@@ -368,10 +380,13 @@ class GameApp:
     def _record_completion(self) -> None:
         stars = self._compute_stars()
         st = self.stats.get(self.level_idx) or LevelStats()
+        prev_best_stars = st.best_stars or 0
         st.completed = True
         st.best_moves = self.move_count if st.best_moves is None else min(st.best_moves, self.move_count)
         st.best_stars = stars if st.best_stars is None else max(st.best_stars, stars)
         self.stats[self.level_idx] = st
+        if stars == 3 and prev_best_stars < 3:
+            self.clue_uses += 1
 
     def _compute_stars(self) -> int:
         if not self.completed:
@@ -383,6 +398,60 @@ class GameApp:
         if self.move_count <= self.level.par_moves + 3:
             return 2
         return 1
+
+    def _activate_clue(self) -> None:
+        if self.clue_uses <= 0 or self.completed:
+            return
+        result = solve_level_bfs(
+            self.level, a_start=self.a.pos, b_start=self.b.pos
+        )
+        if not result.found:
+            return
+        path: list[tuple[Vec2, Vec2, str]] = []
+        a, b = self.a.pos, self.b.pos
+        for direction in result.moves:
+            path.append((a, b, direction))
+            step = move_characters(self.level, a, b, direction)
+            if step.fell_off:
+                break
+            a, b = step.a_to, step.b_to
+        self.clue_path = path
+        self.clue_uses -= 1
+
+    def _draw_clue_arrows(self, x0: int, y0: int) -> None:
+        if not self.clue_path:
+            return
+        tp = self.tile_px
+        arrow_offsets = {
+            "up": (0, -1), "down": (0, 1), "left": (-1, 0), "right": (1, 0),
+        }
+        shown = min(5, len(self.clue_path))
+        for i in range(shown):
+            a_pos, _b_pos, direction = self.clue_path[i]
+            dx, dy = arrow_offsets[direction]
+            alpha = max(70, 200 - i * 30)
+
+            cx = x0 + a_pos.x * tp + tp // 2
+            cy = y0 + a_pos.y * tp + tp // 2
+            self._blit_arrow(cx, cy, dx, dy, (80, 160, 255), alpha, tp)
+
+    def _blit_arrow(
+        self, cx: int, cy: int, dx: int, dy: int,
+        color: tuple[int, int, int], alpha: int, tile_px: int,
+    ) -> None:
+        sz = max(8, tile_px // 4)
+        surf = pygame.Surface((tile_px, tile_px), pygame.SRCALPHA)
+        mid = tile_px // 2
+        if dx == 1:
+            pts = [(mid + sz, mid), (mid - sz // 2, mid - sz), (mid - sz // 2, mid + sz)]
+        elif dx == -1:
+            pts = [(mid - sz, mid), (mid + sz // 2, mid - sz), (mid + sz // 2, mid + sz)]
+        elif dy == -1:
+            pts = [(mid, mid - sz), (mid - sz, mid + sz // 2), (mid + sz, mid + sz // 2)]
+        else:
+            pts = [(mid, mid + sz), (mid - sz, mid - sz // 2), (mid + sz, mid - sz // 2)]
+        pygame.draw.polygon(surf, (*color, alpha), pts)
+        self.screen.blit(surf, (cx - mid, cy - mid))
 
     def _grid_origin_px(self) -> tuple[int, int]:
         return (self.pad_px, self.pad_px)
@@ -540,6 +609,8 @@ class GameApp:
         draw_char(self.a.pos, (120, 175, 255), "A", bucket.char_a, color_a)
         draw_char(self.b.pos, (220, 135, 255), "B", bucket.char_b, color_b)
 
+        self._draw_clue_arrows(x0, y0)
+
         # Grid border
         pygame.draw.rect(self.screen, (10, 10, 12), self._grid_rect_px(), width=3, border_radius=10)
 
@@ -547,7 +618,7 @@ class GameApp:
         """Returns 'resume', 'home', or None."""
         for action, rect in self.pause_btn_rects.items():
             if rect.collidepoint(pos_px):
-                if action == "back":
+                if action in ("back", "close"):
                     return "resume"
                 if action == "home":
                     return "home"
@@ -578,6 +649,13 @@ class GameApp:
         panel_x = (w - panel_w) // 2
         panel_y = (h - panel_h) // 2
         self.screen.blit(bg_scaled, (panel_x, panel_y))
+
+        # Close button anchored to top-right of the panel
+        close_sz = max(28, int(panel_h * 0.07))
+        img_close = self._crop_and_scale(self.pm_close_raw, close_sz, close_sz)
+        close_r = img_close.get_rect(topright=(panel_x + panel_w - 8, panel_y + 8))
+        self.screen.blit(img_close, close_r)
+        self.pause_btn_rects["close"] = close_r
 
         # Paper area within the clipboard image
         paper_x = panel_x + int(panel_w * 0.08)
@@ -724,8 +802,23 @@ class GameApp:
         self.screen.blit(self.img_btn_zoom_out, r_out)
         self.hud_btn_rects["zoom_out"] = r_out
 
-        # Pause button below zoom, centred
+        # Clue button below zoom, centred
         y += max(r_in.height, r_out.height) + 10
+        clue_img = self.img_btn_clue
+        if self.clue_uses <= 0:
+            clue_img = clue_img.copy()
+            grey_overlay = pygame.Surface(clue_img.get_size(), pygame.SRCALPHA)
+            grey_overlay.fill((120, 120, 120, 140))
+            clue_img.blit(grey_overlay, (0, 0))
+        clue_r = clue_img.get_rect(centerx=hud_cx, top=y)
+        self.screen.blit(clue_img, clue_r)
+        self.hud_btn_rects["clue"] = clue_r
+        y += clue_r.height + 3
+        clue_txt = self.font.render(f"Clues: {self.clue_uses}", True, accent)
+        self.screen.blit(clue_txt, clue_txt.get_rect(centerx=hud_cx, top=y))
+        y += clue_txt.get_height() + 8
+
+        # Pause button below clue, centred
         pause_r = self.img_btn_pause.get_rect(centerx=hud_cx, top=y)
         self.screen.blit(self.img_btn_pause, pause_r)
         self.hud_btn_rects["pause"] = pause_r

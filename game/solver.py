@@ -21,8 +21,14 @@ class SolveResult:
     expanded: int
 
 
-def solve_level_bfs(level: Level, *, max_expansions: int = 200_000) -> SolveResult:
-    start = State(level.a_start, level.b_start)
+def solve_level_bfs(
+    level: Level,
+    *,
+    a_start: Vec2 | None = None,
+    b_start: Vec2 | None = None,
+    max_expansions: int = 200_000,
+) -> SolveResult:
+    start = State(a_start or level.a_start, b_start or level.b_start)
 
     q: deque[State] = deque([start])
     prev: dict[State, tuple[State, str, StepResult] | None] = {start: None}
